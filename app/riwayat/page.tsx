@@ -35,11 +35,13 @@ export default function RiwayatPage() {
     }
   }, []);
 
-  const formatRupiah = (angka) => {
+  // ✅ FIX TYPE
+  const formatRupiah = (angka: number | string) => {
     return Number(angka).toLocaleString("id-ID");
   };
 
-  const hapusTransaksi = (id) => {
+  // ✅ FIX TYPE
+  const hapusTransaksi = (id: string) => {
     const konfirmasi = confirm("Yakin ingin menghapus?");
     if (!konfirmasi) return;
 
@@ -54,12 +56,15 @@ export default function RiwayatPage() {
     item.tanggal.includes(today)
   );
 
-  const totalHariIni = transaksiHariIni.reduce((sum, item) => sum + item.total, 0);
+  const totalHariIni = transaksiHariIni.reduce(
+    (sum, item) => sum + item.total,
+    0
+  );
 
-  const cetakUlang = (id) => {
+  // ✅ FIX TYPE
+  const cetakUlang = (id: string) => {
     window.open(`/nota?id=${id}`, "_blank");
   };
-
 
   return (
     <div
@@ -79,24 +84,25 @@ export default function RiwayatPage() {
       >
         <h2 style={{ marginBottom: "15px" }}>Riwayat Transaksi</h2>
 
-<div
-  style={{
-    backgroundColor: "#dff9fb",
-    padding: "10px",
-    borderRadius: "5px",
-    marginBottom: "10px"
-  }}
->
-  <p><b>Laporan Hari Ini</b></p>
-  <p>Jumlah Transaksi: {transaksiHariIni.length}</p>
-  <p>Total Pendapatan: Rp {formatRupiah(totalHariIni)}</p>
-</div>
+        {/* LAPORAN */}
+        <div
+          style={{
+            backgroundColor: "#dff9fb",
+            padding: "10px",
+            borderRadius: "5px",
+            marginBottom: "10px",
+          }}
+        >
+          <p><b>Laporan Hari Ini</b></p>
+          <p>Jumlah Transaksi: {transaksiHariIni.length}</p>
+          <p>Total Pendapatan: Rp {formatRupiah(totalHariIni)}</p>
+        </div>
 
         {data.length === 0 && (
           <p style={{ color: "red" }}>Belum ada transaksi</p>
         )}
 
-        {data.map((trx, index) => (
+        {data.map((trx) => (
           <div
             key={trx.id}
             style={{
@@ -111,20 +117,36 @@ export default function RiwayatPage() {
             <p><b>Tanggal:</b> {trx.tanggal}</p>
             <p><b>Selesai:</b> {trx.tanggalSelesai}</p>
 
-            <table style={{ width: "100%", marginTop: "10px", borderCollapse: "collapse" }}>
+            <table
+              style={{
+                width: "100%",
+                marginTop: "10px",
+                borderCollapse: "collapse",
+              }}
+            >
               <thead>
                 <tr style={{ backgroundColor: "#bdc3c7" }}>
-                  <th style={{ border: "1px solid #999", padding: "5px" }}>Layanan</th>
-                  <th style={{ border: "1px solid #999", padding: "5px" }}>Harga</th>
-                  <th style={{ border: "1px solid #999", padding: "5px" }}>Berat</th>
-                  <th style={{ border: "1px solid #999", padding: "5px" }}>Total</th>
+                  <th style={{ border: "1px solid #999", padding: "5px" }}>
+                    Layanan
+                  </th>
+                  <th style={{ border: "1px solid #999", padding: "5px" }}>
+                    Harga
+                  </th>
+                  <th style={{ border: "1px solid #999", padding: "5px" }}>
+                    Berat
+                  </th>
+                  <th style={{ border: "1px solid #999", padding: "5px" }}>
+                    Total
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
                 {trx.layanan.map((item, i) => (
                   <tr key={i}>
-                    <td style={{ border: "1px solid #999", padding: "5px" }}>{item.nama}</td>
+                    <td style={{ border: "1px solid #999", padding: "5px" }}>
+                      {item.nama}
+                    </td>
                     <td style={{ border: "1px solid #999", padding: "5px" }}>
                       Rp {formatRupiah(item.harga)}
                     </td>
@@ -144,7 +166,6 @@ export default function RiwayatPage() {
             </p>
 
             <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-  
               <button
                 onClick={() => cetakUlang(trx.id)}
                 style={{
@@ -153,7 +174,7 @@ export default function RiwayatPage() {
                   padding: "5px 10px",
                   border: "none",
                   borderRadius: "5px",
-                  flex: 1
+                  flex: 1,
                 }}
               >
                 Cetak Ulang
@@ -167,12 +188,11 @@ export default function RiwayatPage() {
                   padding: "5px 10px",
                   border: "none",
                   borderRadius: "5px",
-                  flex: 1
+                  flex: 1,
                 }}
               >
                 Hapus
               </button>
-
             </div>
           </div>
         ))}
