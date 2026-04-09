@@ -1,14 +1,31 @@
 "use client";
 import { useEffect, useState } from "react";
 
+type LayananItem = {
+  nama: string;
+  harga: number;
+  berat: number;
+};
+
+type Transaksi = {
+  id: string;
+  nomor: string;
+  nama: string;
+  wa: string;
+  tanggal: string;
+  tanggalSelesai: string;
+  layanan: LayananItem[];
+  total: number;
+};
+
 export default function RiwayatPage() {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<Transaksi[]>([]);
 
   useEffect(() => {
     try {
       const getData = localStorage.getItem("transaksi");
       if (getData) {
-        const parsed = JSON.parse(getData);
+        const parsed: Transaksi[] = JSON.parse(getData);
         if (Array.isArray(parsed)) {
           setData(parsed.reverse());
         }
