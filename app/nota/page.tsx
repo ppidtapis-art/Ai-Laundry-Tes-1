@@ -12,7 +12,7 @@ export default function NotaPage() {
     const transaksi = localStorage.getItem("transaksi");
 
     if (transaksi) {
-      const parsed = JSON.parse(transaksi);
+      const parsed: any[] = JSON.parse(transaksi);
       const found = parsed.find((item) => item.id == id);
 
       if (found) {
