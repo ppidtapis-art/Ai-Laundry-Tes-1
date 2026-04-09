@@ -34,7 +34,7 @@ export default function LayananPage() {
 
     const dataBaru: Layanan = {
       nama: nama,
-      harga: parseInt(harga)
+      harga: Number(harga),
     };
 
     let dataUpdate: Layanan[];

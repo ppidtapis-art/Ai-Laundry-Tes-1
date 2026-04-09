@@ -21,7 +21,7 @@ export default function NotaPage() {
     }
   }, [id]);
 
-  const formatRupiah = (angka) => {
+  const formatRupiah = (angka: number | string) => {
     return Number(angka).toLocaleString("id-ID");
   };
 
