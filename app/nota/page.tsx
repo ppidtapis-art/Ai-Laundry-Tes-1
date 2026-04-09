@@ -2,17 +2,34 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+type LayananItem = {
+  nama: string;
+  harga: number;
+  berat: number;
+};
+
+type Nota = {
+  id: string;
+  nomor: string;
+  nama: string;
+  wa: string;
+  tanggal: string;
+  tanggalSelesai: string;
+  layanan: LayananItem[];
+  total: number;
+};
+
 export default function NotaPage() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<Nota | null>(null);
 
   useEffect(() => {
     const transaksi = localStorage.getItem("transaksi");
 
     if (transaksi) {
-      const parsed: any[] = JSON.parse(transaksi);
+      const parsed: Nota[] = JSON.parse(transaksi);
       const found = parsed.find((item) => item.id == id);
 
       if (found) {
@@ -53,15 +70,15 @@ export default function NotaPage() {
       <p style={{ margin: 0 }}>HP/WA : 0813 4703 3944</p>
     </div>
 
-      <p>No Nota: {data.nomor}</p>
-      <p>Nama: {data.nama}</p>
-      <p>WA: {data.wa}</p>
-      <p>Tanggal: {data.tanggal}</p>
-      <p>Selesai: {data.tanggalSelesai}</p>
+      <p>No Nota: {data?.nomor}</p>
+      <p>Nama: {data?.nama}</p>
+      <p>WA: {data?.wa}</p>
+      <p>Tanggal: {data?.tanggal}</p>
+      <p>Selesai: {data?.tanggalSelesai}</p>
 
       <hr />
 
-      {data.layanan.map((item, i) => (
+      {data?.layanan.map((item, i) => (
         <div key={i} style={{ marginBottom: "5px" }}>
           <div>{item.nama}</div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -88,8 +105,8 @@ export default function NotaPage() {
         Print
       </button>
     </div>
-  );
-  <style>
+    
+    <style>
   {`
   @media print {
     body {
@@ -101,4 +118,5 @@ export default function NotaPage() {
   }
   `}
   </style>
+  );
 }
