@@ -1,19 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
 
+// ✅ TAMBAHKAN TYPE
+type Layanan = {
+  nama: string;
+  harga: number;
+};
+
 export default function LayananPage() {
 
-  const [layanan, setLayanan] = useState([]);
+  // ✅ FIX TYPE
+  const [layanan, setLayanan] = useState<Layanan[]>([]);
   const [nama, setNama] = useState("");
   const [harga, setHarga] = useState("");
-  const [editIndex, setEditIndex] = useState(null);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setTimeout(() => {
       try {
         const data = localStorage.getItem("layanan");
         if (data) {
-          const parsed = JSON.parse(data);
+          const parsed: Layanan[] = JSON.parse(data);
           setLayanan(parsed);
         }
       } catch (error) {
@@ -22,15 +29,15 @@ export default function LayananPage() {
     }, 100);
   }, []);
 
- const tambahLayanan = () => {
+  const tambahLayanan = () => {
     if (!nama || !harga) return;
 
-    const dataBaru = {
+    const dataBaru: Layanan = {
       nama: nama,
       harga: parseInt(harga)
     };
 
-    let dataUpdate;
+    let dataUpdate: Layanan[];
 
     if (editIndex !== null) {
       dataUpdate = [...layanan];
@@ -40,49 +47,31 @@ export default function LayananPage() {
       dataUpdate = [...layanan, dataBaru];
     }
 
-    // SIMPAN LANGSUNG KE LOCALSTORAGE
     localStorage.setItem("layanan", JSON.stringify(dataUpdate));
-
-    // UPDATE STATE
     setLayanan(dataUpdate);
 
     setNama("");
     setHarga("");
   };
 
-  const hapusLayanan = (index) => {
+  const hapusLayanan = (index: number) => {
     const dataBaru = layanan.filter((_, i) => i !== index);
-
     localStorage.setItem("layanan", JSON.stringify(dataBaru));
     setLayanan(dataBaru);
   };
 
-  const editLayanan = (index) => {
+  const editLayanan = (index: number) => {
     const item = layanan[index];
     setNama(item.nama);
-    setHarga(item.harga);
+    setHarga(String(item.harga));
     setEditIndex(index);
-  };     
+  };
 
   return (
-    <div
-      style={{
-        backgroundColor: "#2ecc71",
-        minHeight: "100vh",
-        padding: "20px",
-        color: "black",
-      }}
-    >
+    <div style={{ backgroundColor: "#2ecc71", minHeight: "100vh", padding: "20px", color: "black" }}>
       <h1 style={{ color: "white" }}>Tambah Layanan</h1>
 
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "20px",
-          borderRadius: "10px",
-          marginBottom: "20px",
-        }}
-      >
+      <div style={{ backgroundColor: "white", padding: "20px", borderRadius: "10px", marginBottom: "20px" }}>
         <input
           type="text"
           placeholder="Nama Layanan"
@@ -99,54 +88,26 @@ export default function LayananPage() {
           style={{ padding: "10px", marginRight: "10px" }}
         />
 
-        <button
-          onClick={tambahLayanan}
-          style={{
-            padding: "10px",
-            backgroundColor: "green",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-          }}
-        >
-          Tambah Layanan
+        <button onClick={tambahLayanan} style={{ padding: "10px", backgroundColor: "green", color: "white", border: "none", borderRadius: "5px" }}>
+          {editIndex !== null ? "Update" : "Tambah Layanan"}
         </button>
       </div>
 
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "20px",
-          borderRadius: "10px",
-        }}
-      >
+      <div style={{ backgroundColor: "white", padding: "20px", borderRadius: "10px" }}>
         <h3>Daftar Layanan:</h3>
 
         {layanan.map((item, index) => (
-          <div
-            key={index}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "10px",
-            }}
-          >
+          <div key={index} style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
             <span>
               {item.nama} - Rp {item.harga}
             </span>
-        
+
             <div>
-              <button
-                onClick={() => editLayanan(index)}
-                style={{ marginRight: "10px" }}
-              >
+              <button onClick={() => editLayanan(index)} style={{ marginRight: "10px" }}>
                 Edit
               </button>
-        
-              <button
-                onClick={() => hapusLayanan(index)}
-                style={{ backgroundColor: "red", color: "white" }}
-              >
+
+              <button onClick={() => hapusLayanan(index)} style={{ backgroundColor: "red", color: "white" }}>
                 Hapus
               </button>
             </div>
