@@ -105,18 +105,18 @@ export default function NotaPage() {
         Print
       </button>
     </div>
-    
-    <style>
-  {`
-  @media print {
-    body {
-      margin: 0;
-    }
-    button {
-      display: none;
-    }
-  }
-  `}
-  </style>
+
+      {/* STYLE PRINT */}
+      <style jsx>{`
+        @media print {
+          body {
+            margin: 0;
+          }
+          button {
+            display: none;
+          }
+        }
+      `}</style>
+    </>
   );
 }
