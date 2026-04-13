@@ -64,6 +64,13 @@ export default function TransaksiPage() {
       return null;
     }
 
+    const handlePrint = () => {
+      const data = simpanTransaksi();
+      if (!data) return;
+
+      window.open(`/nota?id=${data.id}`, "_blank");
+    };
+
     const getNomorNota = () => {
       const data = localStorage.getItem("transaksi");
       const transaksi: Transaksi[] = data ? JSON.parse(data) : [];
@@ -103,25 +110,6 @@ export default function TransaksiPage() {
     }
   };
 
-    try {
-      const dataLama = localStorage.getItem("transaksi");
-      const transaksi: Transaksi[] = dataLama ? JSON.parse(dataLama) : [];
-
-      transaksi.push(transaksiBaru);
-
-      localStorage.setItem("transaksi", JSON.stringify(transaksi));
-
-      // buka nota
-      window.open(`/nota?id=${transaksiBaru.id}`, "_blank");
-
-      // reset
-      setNama("");
-      setWa("");
-      setTanggalSelesai("");
-      setSelectedLayanan([]);
-    } catch (error) {
-      console.log("ERROR:", error);
-    }
   };
 
   return (
@@ -220,8 +208,8 @@ export default function TransaksiPage() {
 
         <h3>Total: Rp {formatRupiah(total)}</h3>
 
-        <button onClick={simpanDanCetak}>
-          Simpan & Cetak
+        <button onClick={handlePrint}>
+          🖨 Simpan & Cetak
         </button>
       </div>
     </div>
