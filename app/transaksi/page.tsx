@@ -58,10 +58,10 @@ export default function TransaksiPage() {
   };
 
   // simpan transaksi
-  const simpanDanCetak = () => {
+  const simpanTransaksi = (): Transaksi | null => {
     if (!nama || !wa || selectedLayanan.length === 0) {
       alert("Lengkapi data terlebih dahulu!");
-      return;
+      return null;
     }
 
     const getNomorNota = () => {
@@ -82,6 +82,26 @@ export default function TransaksiPage() {
       layanan: selectedLayanan,
       total,
     };
+
+    try {
+      const dataLama = localStorage.getItem("transaksi");
+      const transaksi: Transaksi[] = dataLama ? JSON.parse(dataLama) : [];
+
+      transaksi.push(transaksiBaru);
+      localStorage.setItem("transaksi", JSON.stringify(transaksi));
+
+      // reset form
+      setNama("");
+      setWa("");
+      setTanggalSelesai("");
+      setSelectedLayanan([]);
+
+      return transaksiBaru;
+    } catch (error) {
+      console.log("ERROR:", error);
+      return null;
+    }
+  };
 
     try {
       const dataLama = localStorage.getItem("transaksi");
