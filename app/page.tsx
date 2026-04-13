@@ -1,9 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 export default function Home() {
-  const router = useRouter();
 
   const menu = [
     { nama: "Transaksi", path: "/transaksi", warna: "#27ae60", icon: "💰" },
@@ -20,18 +17,16 @@ export default function Home() {
         fontFamily: "sans-serif",
       }}
     >
-      {/* HEADER */}
       <div style={{ textAlign: "center", marginBottom: "25px" }}>
         <h2 style={{ margin: 0 }}>APLIKASI LAUNDRY</h2>
         <p style={{ margin: 0, color: "#555" }}>Siap Digunakan di HP Kasir</p>
       </div>
 
-      {/* MENU UTAMA */}
       <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
         {menu.map((item, index) => (
           <button
             key={index}
-            onClick={() => router.push(item.path)}
+            onClick={() => window.location.href = item.path} // 🔥 FIX
             style={{
               display: "flex",
               alignItems: "center",
