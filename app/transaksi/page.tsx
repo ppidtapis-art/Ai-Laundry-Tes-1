@@ -38,7 +38,7 @@ useEffect(() => {
 try {
 const data = localStorage.getItem("layanan");
 
-```
+
   if (data) {
     const parsed: LayananItem[] = JSON.parse(data);
 
@@ -49,7 +49,7 @@ const data = localStorage.getItem("layanan");
 } catch (error) {
   console.log("ERROR AMBIL LAYANAN:", error);
 }
-```
+
 
 }, []);
 
@@ -74,10 +74,10 @@ const getNomorNota = () => {
 const data = localStorage.getItem("transaksi");
 const transaksi: Transaksi[] = data ? JSON.parse(data) : [];
 
-```
+
 const nomor = transaksi.length + 1;
 return "TRX-" + nomor.toString().padStart(3, "0");
-```
+
 
 };
 
@@ -87,7 +87,7 @@ alert("Lengkapi data terlebih dahulu!");
 return null;
 }
 
-```
+
 const transaksiBaru: Transaksi = {
   id: Date.now(),
   nomor: getNomorNota(),
@@ -128,7 +128,7 @@ try {
   console.log("ERROR:", error);
   return null;
 }
-```
+
 
 };
 
@@ -136,9 +136,9 @@ const handlePrint = () => {
 const data = simpanTransaksi();
 if (!data) return;
 
-```
+
 window.open(`/nota?id=${data.id}`, "_blank");
-```
+
 
 };
 
@@ -159,7 +159,7 @@ color: "black",
 }}
 > <h2>Input Transaksi</h2>
 
-```
+
     <label>Pilih Pelanggan</label>
     <select
       value={selectedPelanggan}
@@ -269,7 +269,7 @@ color: "black",
     </button>
   </div>
 </div>
-```
+
 
 );
 }
