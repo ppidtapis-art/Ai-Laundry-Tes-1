@@ -20,19 +20,37 @@ export default function LayananPage() {
   const [tipe, setTipe] = useState<TipeHarga>("kg");
   const [estimasiHari, setEstimasiHari] = useState(1);
 
+  const [editId, setEditId] = useState<number | null>(null);
+
   /* ===== LOAD DATA ===== */
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("layanan") || "[]");
     setData(saved);
   }, []);
 
-  /* ===== SIMPAN ===== */
+  /* ===== SIMPAN / UPDATE ===== */
   const simpan = () => {
     if (!nama || harga <= 0 || estimasiHari <= 0) {
       alert("Semua data wajib diisi dengan benar");
       return;
     }
 
+    // MODE EDIT
+    if (editId !== null) {
+      const updated = data.map((item) =>
+        item.id === editId
+          ? { ...item, nama, harga, tipe, estimasiHari }
+          : item
+      );
+
+      setData(updated);
+      localStorage.setItem("layanan", JSON.stringify(updated));
+
+      resetForm();
+      return;
+    }
+
+    // MODE TAMBAH
     const newData: Layanan = {
       id: Date.now(),
       nama,
@@ -45,10 +63,16 @@ export default function LayananPage() {
     setData(updated);
     localStorage.setItem("layanan", JSON.stringify(updated));
 
-    /* RESET FORM */
-    setNama("");
-    setHarga(0);
-    setEstimasiHari(1);
+    resetForm();
+  };
+
+  /* ===== EDIT ===== */
+  const edit = (item: Layanan) => {
+    setEditId(item.id);
+    setNama(item.nama);
+    setHarga(item.harga);
+    setTipe(item.tipe);
+    setEstimasiHari(item.estimasiHari);
   };
 
   /* ===== HAPUS ===== */
@@ -56,6 +80,15 @@ export default function LayananPage() {
     const updated = data.filter((x) => x.id !== id);
     setData(updated);
     localStorage.setItem("layanan", JSON.stringify(updated));
+  };
+
+  /* ===== RESET ===== */
+  const resetForm = () => {
+    setEditId(null);
+    setNama("");
+    setHarga(0);
+    setTipe("kg");
+    setEstimasiHari(1);
   };
 
   const formatRp = (n: number) => n.toLocaleString("id-ID");
@@ -88,14 +121,15 @@ export default function LayananPage() {
             background: "#fafafa",
           }}
         >
-          <h3>➕ Tambah Layanan</h3>
+          <h3>
+            {editId ? "✏️ Edit Layanan" : "➕ Tambah Layanan"}
+          </h3>
 
           {/* NAMA */}
           <div>
-            <label style={{ fontWeight: "bold" }}>Nama Layanan</label>
+            <label><b>Nama Layanan</b></label>
             <input
               style={{ width: "100%", padding: 8, marginTop: 5 }}
-              placeholder="Contoh: Cuci Setrika"
               value={nama}
               onChange={(e) => setNama(e.target.value)}
             />
@@ -103,7 +137,7 @@ export default function LayananPage() {
 
           {/* TIPE */}
           <div>
-            <label style={{ fontWeight: "bold" }}>Tipe Harga</label>
+            <label><b>Tipe Harga</b></label>
             <select
               style={{ width: "100%", padding: 8, marginTop: 5 }}
               value={tipe}
@@ -116,11 +150,10 @@ export default function LayananPage() {
 
           {/* HARGA */}
           <div>
-            <label style={{ fontWeight: "bold" }}>Harga (Rp)</label>
+            <label><b>Harga</b></label>
             <input
               type="number"
               style={{ width: "100%", padding: 8, marginTop: 5 }}
-              placeholder="Contoh: 7000"
               value={harga}
               onChange={(e) => setHarga(Number(e.target.value))}
             />
@@ -128,39 +161,52 @@ export default function LayananPage() {
 
           {/* ESTIMASI */}
           <div>
-            <label style={{ fontWeight: "bold" }}>
-              Estimasi Selesai (Hari)
-            </label>
+            <label><b>Estimasi (Hari)</b></label>
             <input
               type="number"
               style={{ width: "100%", padding: 8, marginTop: 5 }}
-              placeholder="Contoh: 3"
               value={estimasiHari}
               onChange={(e) => setEstimasiHari(Number(e.target.value))}
             />
           </div>
 
-          <button
-            style={{
-              padding: 10,
-              background: "#27ae60",
-              color: "white",
-              border: "none",
-              borderRadius: 6,
-              fontWeight: "bold",
-              cursor: "pointer",
-            }}
-            onClick={simpan}
-          >
-            💾 Simpan Layanan
-          </button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={simpan}
+              style={{
+                padding: 10,
+                background: editId ? "#f39c12" : "#27ae60",
+                color: "white",
+                border: "none",
+                borderRadius: 6,
+                cursor: "pointer",
+              }}
+            >
+              {editId ? "Update" : "Simpan"}
+            </button>
+
+            {editId && (
+              <button
+                onClick={resetForm}
+                style={{
+                  padding: 10,
+                  background: "#7f8c8d",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                }}
+              >
+                Batal
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ===== TABEL ===== */}
         <table width="100%" cellPadding={10}>
           <thead style={{ background: "#2c3e50", color: "white" }}>
             <tr>
-              <th>Nama Layanan</th>
+              <th>Nama</th>
               <th>Tipe</th>
               <th>Harga</th>
               <th>Estimasi</th>
@@ -174,8 +220,23 @@ export default function LayananPage() {
                 <td>{l.tipe === "kg" ? "Per Kg" : "Per Item"}</td>
                 <td>Rp {formatRp(l.harga)}</td>
                 <td>{l.estimasiHari} Hari</td>
-                <td>
+                <td style={{ display: "flex", gap: 5 }}>
                   <button
+                    onClick={() => edit(l)}
+                    style={{
+                      background: "#3498db",
+                      color: "white",
+                      border: "none",
+                      padding: "5px 10px",
+                      borderRadius: 5,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => hapus(l.id)}
                     style={{
                       background: "red",
                       color: "white",
@@ -184,7 +245,6 @@ export default function LayananPage() {
                       borderRadius: 5,
                       cursor: "pointer",
                     }}
-                    onClick={() => hapus(l.id)}
                   >
                     Hapus
                   </button>

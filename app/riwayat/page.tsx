@@ -68,15 +68,6 @@ export default function RiwayatPage() {
 
   return (
     <div style={styles.container}>
-
-      {/* SIDEBAR */}
-      <div style={styles.sidebar}>
-        <h2>Laundry POS</h2>
-        <Menu text="Dashboard" />
-        <Menu text="Transaksi" />
-        <Menu text="Riwayat" active />
-      </div>
-
       {/* MAIN */}
       <div style={styles.main}>
 
@@ -165,24 +156,9 @@ export default function RiwayatPage() {
   );
 }
 
-/* COMPONENT */
-function Menu({ text, active = false }: any) {
-  return (
-    <div style={{
-      padding: "10px",
-      background: active ? "#34495e" : "transparent",
-      borderRadius: "8px",
-      marginBottom: "5px"
-    }}>
-      {text}
-    </div>
-  );
-}
-
 /* STYLE */
 const styles: any = {
   container: { display: "flex", minHeight: "100vh", background: "#f5f6fa" },
-  sidebar: { width: "220px", background: "#2c3e50", color: "white", padding: "20px" },
   main: { flex: 1, padding: "20px" },
   header: { display: "flex", justifyContent: "space-between", marginBottom: "20px" },
   search: { padding: "10px", borderRadius: "8px", border: "1px solid #ddd" },
