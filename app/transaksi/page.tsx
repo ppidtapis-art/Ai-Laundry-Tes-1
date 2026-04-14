@@ -14,9 +14,7 @@ type Layanan = {
   estimasiHari: number;
 };
 
-type Selected = Layanan & {
-  qty: number;
-};
+type Selected = Layanan & { qty: number };
 
 export default function TransaksiPage() {
   const [layanan, setLayanan] = useState<Layanan[]>([]);
@@ -33,7 +31,6 @@ export default function TransaksiPage() {
   const formatRp = (n: number) => n.toLocaleString("id-ID");
 
   const normalizeWA = (n: string) => {
-    if (!n) return "";
     const clean = n.replace(/[^0-9]/g, "");
     return clean.startsWith("0") ? "62" + clean.slice(1) : clean;
   };
@@ -62,11 +59,7 @@ export default function TransaksiPage() {
     return tgl.toLocaleDateString("id-ID");
   };
 
-  const isValid = nama.trim() !== "" && normalizeWA(wa).length >= 10 && selected.length > 0;
-
   const kirimWA = async () => {
-    if (!isValid) return alert("Lengkapi data terlebih dahulu");
-
     const canvas = await html2canvas(notaRef.current!);
     const img = canvas.toDataURL("image/png");
 
@@ -79,149 +72,111 @@ export default function TransaksiPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-6">
+    <div className="min-h-screen bg-gray-100 p-3 md:p-6">
+      <div className="max-w-5xl mx-auto space-y-4">
 
-        {/* LEFT */}
-        <div className="md:col-span-2 space-y-6">
+        {/* HEADER */}
+        <div className="bg-white p-4 rounded-xl shadow">
+          <h2 className="font-bold">💳 Transaksi Laundry</h2>
 
-          {/* CUSTOMER */}
-          <div className="bg-white p-5 rounded-2xl shadow space-y-4">
-            <h2 className="text-xl font-bold">💳 Data Pelanggan</h2>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-semibold text-gray-600">Nama Pelanggan</label>
-                <input
-                  className="border p-2 rounded-lg w-full"
-                  placeholder="Contoh: Budi"
-                  value={nama}
-                  onChange={(e) => setNama(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-600">No WhatsApp</label>
-                <input
-                  className="border p-2 rounded-lg w-full"
-                  placeholder="Contoh: 08123456789"
-                  value={wa}
-                  onChange={(e) => setWa(e.target.value)}
-                />
-                <div className="text-xs text-gray-400">Otomatis jadi format 62</div>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+            <input
+              className="border p-2 rounded"
+              placeholder="Nama pelanggan"
+              value={nama}
+              onChange={(e) => setNama(e.target.value)}
+            />
+            <input
+              className="border p-2 rounded"
+              placeholder="No WA"
+              value={wa}
+              onChange={(e) => setWa(e.target.value)}
+            />
           </div>
-
-          {/* LAYANAN */}
-          <div className="bg-white p-5 rounded-2xl shadow">
-            <h3 className="font-semibold mb-1">Pilih Layanan</h3>
-            <p className="text-xs text-gray-500 mb-3">Bisa pilih lebih dari satu layanan</p>
-
-            {layanan.length === 0 && (
-              <div className="text-sm text-gray-400">Belum ada layanan tersedia</div>
-            )}
-
-            <div className="grid gap-3">
-              {layanan.map((l) => {
-                const isChecked = selected.find((x) => x.id === l.id);
-
-                return (
-                  <div
-                    key={l.id}
-                    className={`border p-3 rounded-xl cursor-pointer transition ${
-                      isChecked ? "border-blue-500 bg-blue-50" : "hover:border-gray-400"
-                    }`}
-                    onClick={() => toggleLayanan(l)}
-                  >
-                    <div className="flex justify-between">
-                      <div>
-                        <div className="font-semibold">{l.nama}</div>
-                        <div className="text-xs text-gray-500">
-                          {l.kategori} • {l.tipe === "kg" ? "Per Kg" : "Per Item"} • {l.estimasiHari} hari
-                        </div>
-                      </div>
-                      <div className="font-bold">Rp {formatRp(l.harga)}</div>
-                    </div>
-
-                    {isChecked && (
-                      <div className="mt-2">
-                        <label className="text-xs text-gray-500">Qty ({l.tipe})</label>
-                        <input
-                          type="number"
-                          min={1}
-                          className="mt-1 border p-2 rounded w-full"
-                          value={isChecked.qty}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => updateQty(l.id, Number(e.target.value))}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
         </div>
 
-        {/* RIGHT */}
-        <div className="space-y-6">
+        {/* LAYANAN (COMPACT) */}
+        <div className="bg-white p-4 rounded-xl shadow">
+          <h3 className="text-sm font-semibold mb-2">Pilih Layanan</h3>
 
-          {/* SUMMARY */}
-          <div className="bg-white p-5 rounded-2xl shadow">
-            <h3 className="font-semibold mb-3">Ringkasan Transaksi</h3>
+          <div className="grid gap-2">
+            {layanan.map((l) => {
+              const isChecked = selected.find((x) => x.id === l.id);
 
-            <div className="text-sm text-gray-600">Estimasi Selesai</div>
-            <div className="font-medium">{getEstimasi()}</div>
+              return (
+                <div
+                  key={l.id}
+                  className={`flex justify-between items-center p-2 rounded-lg border text-sm ${
+                    isChecked ? "bg-blue-100 border-blue-400" : ""
+                  }`}
+                  onClick={() => toggleLayanan(l)}
+                >
+                  <div>
+                    <div className="font-medium">{l.nama}</div>
+                    <div className="text-xs text-gray-500">
+                      Rp {formatRp(l.harga)} / {l.tipe}
+                    </div>
+                  </div>
 
-            <div className="mt-3 text-sm text-gray-600">Total Bayar</div>
-            <div className="text-3xl font-bold text-green-600">Rp {formatRp(total)}</div>
+                  {isChecked && (
+                    <input
+                      type="number"
+                      min={1}
+                      className="w-16 border rounded p-1 text-center"
+                      value={isChecked.qty}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => updateQty(l.id, Number(e.target.value))}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-            <button
-              onClick={kirimWA}
-              disabled={!isValid}
-              className={`mt-4 w-full py-2 rounded-lg text-white ${
-                isValid ? "bg-green-600" : "bg-gray-400 cursor-not-allowed"
-              }`}
-            >
-              Kirim Nota WhatsApp
-            </button>
+        {/* SUMMARY */}
+        <div className="bg-white p-4 rounded-xl shadow">
+          <div className="flex justify-between text-sm">
+            <span>Estimasi</span>
+            <span>{getEstimasi()}</span>
           </div>
 
-          {/* NOTA */}
-          <div ref={notaRef} className="bg-white p-4 rounded-xl shadow text-sm">
-            <div className="text-center font-bold text-lg">AI LAUNDRY</div>
-            <div className="text-center text-xs text-gray-400 mb-2">Bersih • Wangi • Rapi</div>
-            <hr />
-
-            <div className="mt-2 space-y-1">
-              <div>Nama: {nama || "-"}</div>
-              <div>Tanggal: {new Date().toLocaleString()}</div>
-              <div>Selesai: {getEstimasi()}</div>
-            </div>
-
-            <hr className="my-2" />
-
-            {selected.length === 0 && (
-              <div className="text-center text-gray-400">Belum ada layanan</div>
-            )}
-
-            {selected.map((x) => (
-              <div key={x.id} className="flex justify-between">
-                <span>{x.nama} x {x.qty}</span>
-                <span>Rp {formatRp(x.harga * x.qty)}</span>
-              </div>
-            ))}
-
-            <hr className="my-2" />
-
-            <div className="flex justify-between font-bold">
-              <span>Total</span>
-              <span>Rp {formatRp(total)}</span>
-            </div>
+          <div className="flex justify-between mt-2 font-bold text-lg text-green-600">
+            <span>Total</span>
+            <span>Rp {formatRp(total)}</span>
           </div>
 
+          <button
+            onClick={kirimWA}
+            className="mt-3 w-full bg-green-600 text-white py-2 rounded-lg"
+          >
+            Kirim Nota
+          </button>
+        </div>
+
+        {/* NOTA */}
+        <div ref={notaRef} className="bg-white p-3 rounded shadow text-xs">
+          <div className="text-center font-bold">AI LAUNDRY</div>
+          <hr className="my-1" />
+
+          <div>Nama: {nama}</div>
+          <div>Selesai: {getEstimasi()}</div>
+
+          <hr className="my-1" />
+
+          {selected.map((x) => (
+            <div key={x.id} className="flex justify-between">
+              <span>{x.nama} x {x.qty}</span>
+              <span>{formatRp(x.harga * x.qty)}</span>
+            </div>
+          ))}
+
+          <hr className="my-1" />
+
+          <div className="flex justify-between font-bold">
+            <span>Total</span>
+            <span>{formatRp(total)}</span>
+          </div>
         </div>
 
       </div>
