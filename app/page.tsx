@@ -1,17 +1,20 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+
   return (
     <html lang="en">
       <body style={{ margin: 0 }}>
         <div style={{ display: "flex", minHeight: "100vh" }}>
 
-          {/* ===== SIDEBAR GLOBAL ===== */}
+          {/* ===== SIDEBAR ===== */}
           <div style={{
             width: 220,
             background: "#2c3e50",
@@ -20,18 +23,17 @@ export default function RootLayout({
             position: "sticky",
             top: 0,
             height: "100vh",
-            zIndex: 10
           }}>
             <h2 style={{ marginBottom: 20 }}>Laundry POS</h2>
 
-            <Menu href="/" label="Dashboard" />
-            <Menu href="/transaksi" label="Transaksi" />
-            <Menu href="/riwayat" label="Riwayat" />
-            <Menu href="/layanan" label="Layanan" />
-            <Menu href="/pelanggan" label="Pelanggan" />
+            <Menu href="/" label="Dashboard" active={pathname === "/"} />
+            <Menu href="/transaksi" label="Transaksi" active={pathname === "/transaksi"} />
+            <Menu href="/riwayat" label="Riwayat" active={pathname === "/riwayat"} />
+            <Menu href="/layanan" label="Layanan" active={pathname === "/layanan"} />
+            <Menu href="/pelanggan" label="Pelanggan" active={pathname === "/pelanggan"} />
           </div>
 
-          {/* ===== CONTENT DINAMIS ===== */}
+          {/* ===== CONTENT ===== */}
           <div style={{
             flex: 1,
             background: "#ecf0f1",
@@ -46,8 +48,16 @@ export default function RootLayout({
   );
 }
 
-/* ===== MENU ===== */
-function Menu({ href, label }: any) {
+/* ===== MENU COMPONENT ===== */
+function Menu({
+  href,
+  label,
+  active,
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+}) {
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
       <div style={{
@@ -55,7 +65,8 @@ function Menu({ href, label }: any) {
         borderRadius: 6,
         marginBottom: 10,
         cursor: "pointer",
-        background: "#34495e"
+        background: active ? "#1abc9c" : "#34495e",
+        transition: "0.2s"
       }}>
         {label}
       </div>
