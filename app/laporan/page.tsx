@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -36,9 +36,20 @@ export default function LaporanPage() {
   const [endDate, setEndDate] = useState("");
   const [search, setSearch] = useState("");
 
+  const printRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const get = JSON.parse(localStorage.getItem("transaksi") || "[]");
-    setData(get);
+
+    // FIX DATA LAMA
+    const fixed = get.map((d: any, i: number) => ({
+      id: d.id || i.toString(),
+      nama: d.nama || "-",
+      tanggal: d.tanggal || new Date().toISOString(),
+      total: Number(d.total) || 0,
+    }));
+
+    setData(fixed);
   }, []);
 
   const today = new Date();
@@ -80,6 +91,7 @@ export default function LaporanPage() {
   const total = hasil.reduce((s, d) => s + d.total, 0);
   const formatRp = (n: number) => n.toLocaleString("id-ID");
 
+  /* CHART */
   const group: Record<string, number> = {};
   hasil.forEach((d) => {
     const t = new Date(d.tanggal).toLocaleDateString();
@@ -98,23 +110,25 @@ export default function LaporanPage() {
     ],
   };
 
-  /* PDF */
+  /* PDF dari PREVIEW */
   const exportPDF = () => {
     const pdf = new jsPDF();
-    const w = pdf.internal.pageSize.getWidth();
-
-    pdf.addImage("/logo.png", "PNG", 14, 10, 20, 20);
+    let y = 10;
 
     pdf.setFontSize(16);
-    pdf.text("AI LAUNDRY", w / 2, 15, { align: "center" });
+    pdf.text("AI LAUNDRY", 105, y, { align: "center" });
 
+    y += 8;
     pdf.setFontSize(10);
-    pdf.text("Laporan Keuangan", w / 2, 22, { align: "center" });
+    pdf.text("Laporan Keuangan", 105, y, { align: "center" });
 
-    pdf.text(`Total: Rp ${formatRp(total)}`, 14, 40);
-    pdf.text(`Transaksi: ${hasil.length}`, 14, 47);
+    y += 10;
+    pdf.text(`Total: Rp ${formatRp(total)}`, 14, y);
+    y += 6;
+    pdf.text(`Transaksi: ${hasil.length}`, 14, y);
 
-    let y = 60;
+    y += 10;
+
     hasil.forEach((d) => {
       pdf.text(`${d.nama}`, 14, y);
       pdf.text(new Date(d.tanggal).toLocaleDateString(), 80, y);
@@ -171,17 +185,14 @@ export default function LaporanPage() {
         />
 
         <div className="flex gap-2">
-          <button
-            onClick={exportPDF}
-            className="bg-blue-600 text-white px-3 rounded"
-          >
+          <button onClick={exportPDF} className="bg-blue-600 text-white px-3 rounded">
             PDF
           </button>
-          <button
-            onClick={exportExcel}
-            className="bg-green-600 text-white px-3 rounded"
-          >
+          <button onClick={exportExcel} className="bg-green-600 text-white px-3 rounded">
             Excel
+          </button>
+          <button onClick={() => window.print()} className="bg-gray-700 text-white px-3 rounded">
+            Print
           </button>
         </div>
       </div>
@@ -189,9 +200,7 @@ export default function LaporanPage() {
       {/* SUMMARY */}
       <div className="bg-white shadow rounded p-4 mb-4 flex justify-between">
         <div>
-          <p className="text-lg font-semibold">
-            Rp {formatRp(total)}
-          </p>
+          <p className="text-lg font-semibold">Rp {formatRp(total)}</p>
           <p className="text-sm text-gray-500">Total Omzet</p>
         </div>
         <div>
@@ -209,19 +218,27 @@ export default function LaporanPage() {
         )}
       </div>
 
-      {/* TABLE */}
-      <div className="bg-white shadow rounded p-4 overflow-auto">
-        <table className="w-full text-sm">
+      {/* PREVIEW CETAK (INI YANG KAMU MAU) */}
+      <div ref={printRef} className="bg-white shadow rounded p-6 mt-6">
+        <h2 className="text-lg font-bold text-center">AI LAUNDRY</h2>
+        <p className="text-center text-sm mb-4">Laporan Keuangan</p>
+
+        <div className="mb-4 text-sm">
+          <p>Total: Rp {formatRp(total)}</p>
+          <p>Transaksi: {hasil.length}</p>
+        </div>
+
+        <table className="w-full text-sm border">
           <thead>
             <tr className="border-b bg-gray-100">
-              <th className="text-left p-2">Nama</th>
-              <th className="text-left p-2">Tanggal</th>
-              <th className="text-right p-2">Total</th>
+              <th className="p-2 text-left">Nama</th>
+              <th className="p-2 text-left">Tanggal</th>
+              <th className="p-2 text-right">Total</th>
             </tr>
           </thead>
           <tbody>
             {hasil.map((d) => (
-              <tr key={d.id} className="border-b hover:bg-gray-50">
+              <tr key={d.id} className="border-b">
                 <td className="p-2">{d.nama}</td>
                 <td className="p-2">
                   {new Date(d.tanggal).toLocaleDateString()}
@@ -233,6 +250,12 @@ export default function LaporanPage() {
             ))}
           </tbody>
         </table>
+
+        <div className="mt-6 text-right text-sm">
+          <p>Pemilik</p>
+          <br />
+          <p>(______________)</p>
+        </div>
       </div>
     </div>
   );
