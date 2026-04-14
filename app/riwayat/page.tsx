@@ -140,7 +140,7 @@ export default function RiwayatPage() {
   /* ================= CETAK ================= */
   const cetakNota = (trx: Transaksi) => {
     localStorage.setItem("printData", JSON.stringify(trx));
-    window.open("/nota", "_blank");
+    window.open(`/nota?id=${trx.id}`, "_blank");
   };
 
   return (

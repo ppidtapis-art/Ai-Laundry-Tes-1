@@ -10,7 +10,7 @@ type LayananItem = {
 };
 
 type Nota = {
-  id: string; // 🔥 FIX (string)
+  id: string;
   nomor: string;
   nama: string;
   wa: string;
@@ -30,21 +30,15 @@ export default function NotaClient() {
   useEffect(() => {
     try {
       const transaksi = localStorage.getItem("transaksi");
-
-      if (!transaksi) {
-        setLoading(false);
-        return;
-      }
+      if (!transaksi) return setLoading(false);
 
       const parsed: Nota[] = JSON.parse(transaksi);
 
-      // 🔥 FIX CARI ID STRING
-      const found = parsed.find((item) => item.id === id);
+      const found = parsed.find(
+        (item) => String(item.id) === String(id)
+      );
 
-      if (found) {
-        setData(found);
-      }
-
+      if (found) setData(found);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -52,9 +46,8 @@ export default function NotaClient() {
     }
   }, [id]);
 
-  const formatRupiah = (angka: number) => {
-    return "Rp " + angka.toLocaleString("id-ID");
-  };
+  const formatRupiah = (n: number) =>
+    "Rp " + n.toLocaleString("id-ID");
 
   const formatTanggal = (tgl: string) => {
     const d = new Date(tgl);
@@ -63,157 +56,160 @@ export default function NotaClient() {
       day: "2-digit",
       month: "short",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
+  };
+
+  const handleDownload = async () => {
+    const el = document.querySelector(".nota") as HTMLElement;
+    if (!el) return;
+
+    const canvas = await html2canvas(el);
+    const img = canvas.toDataURL("image/png");
+
+    const link = document.createElement("a");
+    link.href = img;
+    link.download = `nota-${data?.nomor}.png`;
+    link.click();
   };
 
   const kirimWA = async () => {
     if (!data) return;
 
-    const element = document.querySelector(".nota") as HTMLElement;
+    await handleDownload();
 
-    if (!element) {
-      alert("Nota tidak ditemukan");
-      return;
-    }
+    const nomor = data.wa.replace(/^0/, "62");
 
-    try {
-      const canvas = await html2canvas(element);
-      const image = canvas.toDataURL("image/png");
+    const text = encodeURIComponent(
+      `Halo ${data.nama},\nLaundry kamu sudah siap diambil 🧺\nTotal: ${formatRupiah(
+        data.total
+      )}\nTerima kasih 🙏`
+    );
 
-      const link = document.createElement("a");
-      link.href = image;
-      link.download = `nota-${data.nomor}.png`;
-      link.click();
-
-      const nomor = data.wa.replace(/^0/, "62");
-      window.open(`https://wa.me/${nomor}`, "_blank");
-
-      alert("Nota sudah didownload & siap dikirim ke WhatsApp");
-    } catch (error) {
-      console.log(error);
-      alert("Gagal membuat gambar nota");
-    }
+    window.open(`https://wa.me/${nomor}?text=${text}`, "_blank");
   };
 
-  /* ================= LOADING ================= */
   if (loading) {
-    return (
-      <div className="centerPage">
-        <p>Memuat nota...</p>
-      </div>
-    );
+    return <div className="center">Memuat nota...</div>;
   }
 
-  /* ================= DATA TIDAK ADA ================= */
   if (!data) {
-    return (
-      <div className="centerPage">
-        <p>❌ Data nota tidak ditemukan</p>
-      </div>
-    );
+    return <div className="center">❌ Data tidak ditemukan</div>;
   }
 
   return (
     <>
       <div className="nota">
-        <div className="center">
-          <img src="/logo.png" className="logo" />
+        {/* HEADER */}
+        <div className="header">
           <h2>AI LAUNDRY</h2>
           <p>Bersih • Wangi • Rapi</p>
           <p>WA: 0813-4703-3944</p>
         </div>
 
+        <div className="line" />
+
+        {/* INFO */}
         <div className="info">
-          <p>No: {data.nomor}</p>
-          <p>Nama: {data.nama}</p>
-          <p>WA: {data.wa}</p>
-          <p>Tgl: {formatTanggal(data.tanggal)}</p>
-          <p>Ambil: {formatTanggal(data.tanggalSelesai)}</p>
+          <p>No : {data.nomor}</p>
+          <p>Nama : {data.nama}</p>
+          <p>Tgl : {formatTanggal(data.tanggal)}</p>
+          <p>Ambil : {formatTanggal(data.tanggalSelesai)}</p>
         </div>
 
-        <div className="divider" />
+        <div className="line" />
 
-        {data.layanan.map((item, i) => (
-          <div key={i} className="item">
-            <div>{item.nama}</div>
-            <div className="row">
-              <span>
-                {item.berat} Kg x {formatRupiah(item.harga)}
-              </span>
-              <span>{formatRupiah(item.harga * item.berat)}</span>
-            </div>
+        {/* TABLE */}
+        <div className="table">
+          <div className="row head">
+            <span>Layanan</span>
+            <span>Qty</span>
+            <span>Total</span>
           </div>
-        ))}
 
-        <div className="divider" />
+          {data.layanan.map((l, i) => (
+            <div key={i} className="row">
+              <span>{l.nama}</span>
+              <span>{l.berat}kg</span>
+              <span>{formatRupiah(l.harga * l.berat)}</span>
+            </div>
+          ))}
+        </div>
 
+        <div className="line" />
+
+        {/* TOTAL */}
         <div className="total">
-          <span>Total</span>
+          <span>TOTAL</span>
           <span>{formatRupiah(data.total)}</span>
         </div>
 
+        <div className="line" />
+
+        {/* FOOTER */}
         <div className="footer">
-          <p>
-            Terima kasih dari ai Laundry — cucian beres, kamu tinggal tampil
-            percaya diri 😎
-          </p>
-          <p>Simpan nota ini saat pengambilan</p>
+          <p>Terima kasih 🙏</p>
+          <p>Simpan nota saat pengambilan</p>
         </div>
 
-        <button onClick={() => window.print()} className="printBtn">
+        {/* BUTTON */}
+        <button onClick={() => window.print()} className="btn print">
           🖨 Print
         </button>
 
-        <button onClick={kirimWA} className="waBtn">
+        <button onClick={handleDownload} className="btn download">
+          ⬇ Download
+        </button>
+
+        <button onClick={kirimWA} className="btn wa">
           📲 Kirim WhatsApp
         </button>
       </div>
 
       <style jsx>{`
-        .centerPage {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          height: 100vh;
+        .center {
+          text-align: center;
+          margin-top: 50px;
         }
 
         .nota {
-          width: 300px;
+          width: 320px;
           margin: auto;
-          background: #fff;
-          border-radius: 12px;
-          padding: 18px;
+          background: white;
+          padding: 16px;
           font-family: monospace;
+          border-radius: 10px;
           box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
 
-        .center {
+        .header {
           text-align: center;
         }
 
-        .logo {
-          width: 70px;
-          margin-bottom: 5px;
+        .header h2 {
+          margin: 0;
+        }
+
+        .line {
+          border-top: 1px dashed #999;
+          margin: 10px 0;
         }
 
         .info p {
           margin: 2px 0;
         }
 
-        .divider {
-          border-top: 1px dashed #999;
-          margin: 10px 0;
-        }
-
-        .item {
-          margin-bottom: 5px;
+        .table {
+          font-size: 13px;
         }
 
         .row {
           display: flex;
           justify-content: space-between;
+          margin-bottom: 3px;
+        }
+
+        .head {
+          font-weight: bold;
         }
 
         .total {
@@ -225,40 +221,39 @@ export default function NotaClient() {
 
         .footer {
           text-align: center;
+          font-size: 12px;
           margin-top: 10px;
-          font-size: 11px;
-          color: #555;
         }
 
-        .printBtn {
-          margin-top: 10px;
+        .btn {
           width: 100%;
-          padding: 12px;
+          margin-top: 8px;
+          padding: 10px;
+          border: none;
+          border-radius: 6px;
+          color: white;
+          font-size: 14px;
+        }
+
+        .print {
           background: #22c55e;
-          color: #fff;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
         }
 
-        .waBtn {
-          margin-top: 10px;
-          width: 100%;
-          padding: 12px;
+        .download {
+          background: #3b82f6;
+        }
+
+        .wa {
           background: #25D366;
-          color: #fff;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
         }
 
         @media print {
-          .printBtn, .waBtn {
+          .btn {
             display: none;
           }
           .nota {
             box-shadow: none;
-            border: none;
+            border-radius: 0;
             width: 100%;
           }
         }
