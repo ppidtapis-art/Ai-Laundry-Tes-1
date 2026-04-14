@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 
 /* ================= TYPES ================= */
 type TipeHarga = "kg" | "item";
-
 type Kategori = "reguler" | "express" | "kilat";
 
 type Layanan = {
@@ -13,13 +12,14 @@ type Layanan = {
   tipe: TipeHarga;
   estimasiHari: number;
   kategori: Kategori;
-  diskon: number; // %
+  diskon: number;
   aktif: boolean;
 };
 
 /* ================= COMPONENT ================= */
 export default function LayananPage() {
   const [data, setData] = useState<Layanan[]>([]);
+  const [search, setSearch] = useState("");
 
   const [form, setForm] = useState<Layanan>({
     id: 0,
@@ -34,23 +34,10 @@ export default function LayananPage() {
 
   const [editId, setEditId] = useState<number | null>(null);
 
-  /* ================= LOAD + FIX ================= */
+  /* ================= LOAD ================= */
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("layanan") || "[]");
-
-    const fixed = saved.map((item: any, i: number) => ({
-      id: item.id || Date.now() + i,
-      nama: item.nama || "-",
-      harga: Number(item.harga) || 0,
-      tipe: item.tipe === "item" ? "item" : "kg",
-      estimasiHari: Number(item.estimasiHari) || 1,
-      kategori: item.kategori || "reguler",
-      diskon: Number(item.diskon) || 0,
-      aktif: item.aktif !== false,
-    }));
-
-    setData(fixed);
-    localStorage.setItem("layanan", JSON.stringify(fixed));
+    setData(saved);
   }, []);
 
   /* ================= SAVE ================= */
@@ -60,10 +47,13 @@ export default function LayananPage() {
       return;
     }
 
+    if (form.diskon > 100) {
+      alert("Diskon maksimal 100%");
+      return;
+    }
+
     if (editId !== null) {
-      const updated = data.map((d) =>
-        d.id === editId ? form : d
-      );
+      const updated = data.map((d) => (d.id === editId ? form : d));
       setData(updated);
       localStorage.setItem("layanan", JSON.stringify(updated));
       reset();
@@ -78,20 +68,18 @@ export default function LayananPage() {
     reset();
   };
 
-  /* ================= EDIT ================= */
+  /* ================= ACTION ================= */
   const edit = (item: Layanan) => {
     setEditId(item.id);
     setForm(item);
   };
 
-  /* ================= DELETE ================= */
   const hapus = (id: number) => {
     const updated = data.filter((d) => d.id !== id);
     setData(updated);
     localStorage.setItem("layanan", JSON.stringify(updated));
   };
 
-  /* ================= RESET ================= */
   const reset = () => {
     setEditId(null);
     setForm({
@@ -106,7 +94,7 @@ export default function LayananPage() {
     });
   };
 
-  /* ================= FORMAT ================= */
+  /* ================= HELPER ================= */
   const rp = (n: number) => n.toLocaleString("id-ID");
 
   const hitungHarga = (l: Layanan) => {
@@ -114,75 +102,108 @@ export default function LayananPage() {
     return l.harga - diskon;
   };
 
+  const filtered = data.filter((d) =>
+    d.nama.toLowerCase().includes(search.toLowerCase())
+  );
+
   /* ================= UI ================= */
   return (
-    <div style={{ padding: 20, background: "#f4f6f8", minHeight: "100vh" }}>
-      <div style={{ maxWidth: 1000, margin: "auto" }}>
-        <h2>🧺 Layanan Laundry (Flexible System)</h2>
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+
+        <h1 className="text-2xl font-bold">🧺 Manajemen Layanan Laundry</h1>
 
         {/* FORM */}
-        <div style={{ background: "#fff", padding: 15, borderRadius: 10 }}>
-          <h3>{editId ? "Edit Layanan" : "Tambah Layanan"}</h3>
+        <div className="bg-white p-5 rounded-2xl shadow space-y-4">
+          <h2 className="font-semibold text-lg">
+            {editId ? "Edit Layanan" : "Tambah Layanan"}
+          </h2>
 
-          <div style={{ display: "grid", gap: 10 }}>
-            <input
-              placeholder="Nama layanan"
-              value={form.nama}
-              onChange={(e) => setForm({ ...form, nama: e.target.value })}
-            />
+          <div className="grid md:grid-cols-2 gap-4">
 
-            <input
-              type="number"
-              placeholder="Harga"
-              value={form.harga}
-              onChange={(e) =>
-                setForm({ ...form, harga: Number(e.target.value) })
-              }
-            />
+            <div>
+              <label className="text-sm font-semibold">Nama</label>
+              <input
+                className="w-full border rounded-lg p-2"
+                value={form.nama}
+                onChange={(e) =>
+                  setForm({ ...form, nama: e.target.value })
+                }
+              />
+            </div>
 
-            <select
-              value={form.tipe}
-              onChange={(e) =>
-                setForm({ ...form, tipe: e.target.value as TipeHarga })
-              }
-            >
-              <option value="kg">Per Kg</option>
-              <option value="item">Per Item</option>
-            </select>
+            <div>
+              <label className="text-sm font-semibold">Harga</label>
+              <input
+                type="number"
+                className="w-full border rounded-lg p-2"
+                value={form.harga}
+                onChange={(e) =>
+                  setForm({ ...form, harga: Number(e.target.value) })
+                }
+              />
+            </div>
 
-            <input
-              type="number"
-              placeholder="Estimasi hari"
-              value={form.estimasiHari}
-              onChange={(e) =>
-                setForm({ ...form, estimasiHari: Number(e.target.value) })
-              }
-            />
+            <div>
+              <label className="text-sm font-semibold">Tipe</label>
+              <select
+                className="w-full border rounded-lg p-2"
+                value={form.tipe}
+                onChange={(e) =>
+                  setForm({ ...form, tipe: e.target.value as TipeHarga })
+                }
+              >
+                <option value="kg">Per Kg</option>
+                <option value="item">Per Item</option>
+              </select>
+            </div>
 
-            {/* KATEGORI */}
-            <select
-              value={form.kategori}
-              onChange={(e) =>
-                setForm({ ...form, kategori: e.target.value as Kategori })
-              }
-            >
-              <option value="reguler">Reguler</option>
-              <option value="express">Express</option>
-              <option value="kilat">Kilat</option>
-            </select>
+            <div>
+              <label className="text-sm font-semibold">Estimasi (Hari)</label>
+              <input
+                type="number"
+                className="w-full border rounded-lg p-2"
+                value={form.estimasiHari}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    estimasiHari: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
 
-            {/* DISKON */}
-            <input
-              type="number"
-              placeholder="Diskon (%)"
-              value={form.diskon}
-              onChange={(e) =>
-                setForm({ ...form, diskon: Number(e.target.value) })
-              }
-            />
+            <div>
+              <label className="text-sm font-semibold">Kategori</label>
+              <select
+                className="w-full border rounded-lg p-2"
+                value={form.kategori}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    kategori: e.target.value as Kategori,
+                  })
+                }
+              >
+                <option value="reguler">Reguler</option>
+                <option value="express">Express</option>
+                <option value="kilat">Kilat</option>
+              </select>
+            </div>
 
-            {/* AKTIF */}
-            <label>
+            <div>
+              <label className="text-sm font-semibold">Diskon (%)</label>
+              <input
+                type="number"
+                className="w-full border rounded-lg p-2"
+                value={form.diskon}
+                onChange={(e) =>
+                  setForm({ ...form, diskon: Number(e.target.value) })
+                }
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={form.aktif}
@@ -190,55 +211,80 @@ export default function LayananPage() {
                   setForm({ ...form, aktif: e.target.checked })
                 }
               />
-              Aktif
-            </label>
-
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={simpan}>
-                {editId ? "Update" : "Simpan"}
-              </button>
-
-              {editId && <button onClick={reset}>Batal</button>}
+              <span>Aktif</span>
             </div>
+
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={simpan}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+            >
+              {editId ? "Update" : "Simpan"}
+            </button>
+
+            {editId && (
+              <button
+                onClick={reset}
+                className="bg-gray-400 text-white px-4 py-2 rounded-lg"
+              >
+                Batal
+              </button>
+            )}
           </div>
         </div>
 
+        {/* SEARCH */}
+        <input
+          placeholder="Cari layanan..."
+          className="w-full border p-2 rounded-lg"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
         {/* LIST */}
-        <div style={{ marginTop: 20, display: "grid", gap: 10 }}>
-          {data.map((l) => (
+        <div className="grid gap-3">
+          {filtered.map((l) => (
             <div
               key={l.id}
-              style={{
-                background: l.aktif ? "#fff" : "#eee",
-                padding: 12,
-                borderRadius: 10,
-                display: "flex",
-                justifyContent: "space-between",
-              }}
+              className={`p-4 rounded-xl shadow flex justify-between ${
+                l.aktif ? "bg-white" : "bg-gray-200"
+              }`}
             >
               <div>
-                <b>{l.nama}</b>
-                <div style={{ fontSize: 12 }}>
+                <div className="font-bold">{l.nama}</div>
+                <div className="text-sm text-gray-500">
                   {l.kategori.toUpperCase()} • {l.tipe} • {l.estimasiHari} hari
                 </div>
-
-                <div>
+                <div className="mt-1">
                   Rp {rp(hitungHarga(l))}
                   {l.diskon > 0 && (
-                    <span style={{ color: "red", marginLeft: 8 }}>
-                      (-{l.diskon}%)
+                    <span className="text-red-500 ml-2">
+                      -{l.diskon}%
                     </span>
                   )}
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 5 }}>
-                <button onClick={() => edit(l)}>Edit</button>
-                <button onClick={() => hapus(l.id)}>Hapus</button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => edit(l)}
+                  className="bg-yellow-400 px-3 rounded"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => hapus(l.id)}
+                  className="bg-red-500 text-white px-3 rounded"
+                >
+                  Hapus
+                </button>
               </div>
             </div>
           ))}
         </div>
+
       </div>
     </div>
   );
