@@ -1,6 +1,7 @@
 "use client";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import html2canvas from "html2canvas";
 
 type LayananItem = {
   nama: string;
@@ -40,35 +41,36 @@ export default function NotaClient() {
     return "Rp " + angka.toLocaleString("id-ID");
   };
 
-  const kirimWA = () => {
+  const kirimWA = async () => {
     if (!data) return;
 
-    const pesan = `
-  *Ai LAUNDRY*
-  -------------------------
-  No: ${data.nomor}
-  Nama: ${data.nama}
-  WA: ${data.wa}
-  Tgl: ${data.tanggal}
-  Ambil: ${data.tanggalSelesai}
+    const element = document.querySelector(".nota") as HTMLElement;
 
-  ${data.layanan
-    .map(
-      (item) =>
-        `${item.nama} (${item.berat} Kg x ${formatRupiah(item.harga)}) = ${formatRupiah(item.harga * item.berat)}`
-    )
-    .join("\n")}
+    if (!element) {
+      alert("Nota tidak ditemukan");
+      return;
+    }
 
-  -------------------------
-  Total: ${formatRupiah(data.total)}
+    try {
+      // convert jadi gambar
+      const canvas = await html2canvas(element);
+      const image = canvas.toDataURL("image/png");
 
-  Terima kasih 🙏
-  `;
+      // download otomatis
+      const link = document.createElement("a");
+      link.href = image;
+      link.download = `nota-${data.nomor}.png`;
+      link.click();
 
-    const encoded = encodeURIComponent(pesan);
-    const nomor = data.wa.replace(/^0/, "62");
+      // buka WhatsApp
+      const nomor = data.wa.replace(/^0/, "62");
+      window.open(`https://wa.me/${nomor}`, "_blank");
 
-    window.open(`https://wa.me/${nomor}?text=${encoded}`, "_blank");
+      alert("Nota sudah didownload, silakan kirim ke WhatsApp.");
+    } catch (error) {
+      console.log(error);
+      alert("Gagal membuat gambar nota");
+    }
   };
 
   if (!data) return <p style={{ textAlign: "center" }}>Loading...</p>;
