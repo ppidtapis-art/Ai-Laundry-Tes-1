@@ -26,20 +26,63 @@ export default function RiwayatPage() {
   const [search, setSearch] = useState("");
   const [editData, setEditData] = useState<Transaksi | null>(null);
 
+  /* ================= LOAD DATA + FIX TANGGAL ================= */
   useEffect(() => {
     const getData = localStorage.getItem("transaksi");
     if (getData) {
-      const parsed: Transaksi[] = JSON.parse(getData);
-      const withStatus = parsed.map((d) => ({
-        ...d,
-        status: d.status || "proses",
-      }));
-      setData([...withStatus].reverse());
+      const parsed = JSON.parse(getData);
+
+      const fixed = parsed.map((d: any, i: number) => {
+        let tanggal = d.tanggal;
+
+        // 🔥 FIX INVALID DATE
+        if (!tanggal || isNaN(new Date(tanggal).getTime())) {
+          if (typeof tanggal === "string" && tanggal.includes("/")) {
+            const [dd, mm, yyyy] = tanggal.split("/");
+            tanggal = `${yyyy}-${mm}-${dd}`;
+          } else {
+            tanggal = new Date().toISOString();
+          }
+        }
+
+        return {
+          id: d.id || i.toString(),
+          nomor: d.nomor || "-",
+          nama: d.nama || "-",
+          wa: d.wa || "-",
+          tanggal,
+          tanggalSelesai: d.tanggalSelesai || tanggal,
+          layanan: d.layanan || [],
+          total: Number(d.total) || 0,
+          status: d.status || "proses",
+        };
+      });
+
+      setData([...fixed].reverse());
     }
   }, []);
 
   const formatRupiah = (n: number) => n.toLocaleString("id-ID");
 
+  const formatTanggal = (tgl: string) => {
+    const d = new Date(tgl);
+    if (isNaN(d.getTime())) return "-";
+    return d.toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getStatusColor = (status: StatusType) => {
+    if (status === "proses") return "bg-yellow-400 text-black";
+    if (status === "selesai") return "bg-blue-500 text-white";
+    return "bg-green-500 text-white";
+  };
+
+  /* ================= UPDATE ================= */
   const updateStatus = (id: string, status: StatusType) => {
     const updated = data.map((d) =>
       d.id === id ? { ...d, status } : d
@@ -48,6 +91,7 @@ export default function RiwayatPage() {
     localStorage.setItem("transaksi", JSON.stringify(updated));
   };
 
+  /* ================= EDIT ================= */
   const updateLayanan = (index: number, field: string, value: any) => {
     if (!editData) return;
 
@@ -57,10 +101,7 @@ export default function RiwayatPage() {
       [field]: field === "harga" || field === "berat" ? Number(value) : value,
     };
 
-    const total = newLayanan.reduce(
-      (s, l) => s + l.harga * l.berat,
-      0
-    );
+    const total = newLayanan.reduce((s, l) => s + l.harga * l.berat, 0);
 
     setEditData({ ...editData, layanan: newLayanan, total });
   };
@@ -76,10 +117,7 @@ export default function RiwayatPage() {
   const removeLayanan = (index: number) => {
     if (!editData) return;
     const newLayanan = editData.layanan.filter((_, i) => i !== index);
-    const total = newLayanan.reduce(
-      (s, l) => s + l.harga * l.berat,
-      0
-    );
+    const total = newLayanan.reduce((s, l) => s + l.harga * l.berat, 0);
     setEditData({ ...editData, layanan: newLayanan, total });
   };
 
@@ -95,20 +133,37 @@ export default function RiwayatPage() {
     setEditData(null);
   };
 
+  /* ================= FILTER ================= */
   const filtered = data.filter((d) =>
     d.nama.toLowerCase().includes(search.toLowerCase())
   );
 
+  const total = filtered.reduce((s, d) => s + d.total, 0);
+
+  /* ================= UI ================= */
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Riwayat Transaksi</h1>
+      <h1 className="text-2xl font-bold mb-4">📋 Riwayat Transaksi</h1>
 
+      {/* SEARCH */}
       <input
         placeholder="Cari pelanggan..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="border p-2 rounded w-full mb-4"
+        className="border p-3 rounded w-full mb-4"
       />
+
+      {/* SUMMARY */}
+      <div className="bg-white p-4 rounded shadow mb-4 flex justify-between">
+        <div>
+          <p className="text-sm text-gray-500">Total Omzet</p>
+          <p className="font-bold text-lg">Rp {formatRupiah(total)}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Transaksi</p>
+          <p className="font-bold text-lg">{filtered.length}</p>
+        </div>
+      </div>
 
       {/* MODAL EDIT */}
       {editData && (
@@ -137,21 +192,18 @@ export default function RiwayatPage() {
             {editData.layanan.map((l, i) => (
               <div key={i} className="grid grid-cols-3 gap-2 mb-2">
                 <input
-                  placeholder="Nama"
                   className="border p-2 rounded"
                   value={l.nama}
                   onChange={(e) => updateLayanan(i, "nama", e.target.value)}
                 />
                 <input
                   type="number"
-                  placeholder="Harga"
                   className="border p-2 rounded"
                   value={l.harga}
                   onChange={(e) => updateLayanan(i, "harga", e.target.value)}
                 />
                 <input
                   type="number"
-                  placeholder="Kg"
                   className="border p-2 rounded"
                   value={l.berat}
                   onChange={(e) => updateLayanan(i, "berat", e.target.value)}
@@ -173,7 +225,7 @@ export default function RiwayatPage() {
             </button>
 
             <p className="font-bold mb-3">
-              Total: Rp {editData.total.toLocaleString("id-ID")}
+              Total: Rp {formatRupiah(editData.total)}
             </p>
 
             <div className="flex gap-2">
@@ -196,10 +248,10 @@ export default function RiwayatPage() {
               <div>
                 <h3 className="font-bold">{trx.nama}</h3>
                 <p className="text-sm text-gray-500">
-                  {new Date(trx.tanggal).toLocaleString()}
+                  {formatTanggal(trx.tanggal)}
                 </p>
               </div>
-              <span className="text-sm bg-gray-200 px-2 py-1 rounded">
+              <span className={`px-2 py-1 rounded text-sm ${getStatusColor(trx.status!)}`}>
                 {trx.status}
               </span>
             </div>
