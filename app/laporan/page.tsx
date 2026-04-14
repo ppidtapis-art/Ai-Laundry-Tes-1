@@ -11,8 +11,8 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import jsPDF from "jspdf";
+import * as XLSX from "xlsx";
 
-/* REGISTER CHART */
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -34,6 +34,7 @@ export default function LaporanPage() {
   const [filter, setFilter] = useState("hari");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const get = JSON.parse(localStorage.getItem("transaksi") || "[]");
@@ -42,10 +43,13 @@ export default function LaporanPage() {
 
   const today = new Date();
 
-  /* FILTER */
   const filterData = () => {
     return data.filter((d) => {
       const tgl = new Date(d.tanggal);
+
+      if (search && !d.nama.toLowerCase().includes(search.toLowerCase())) {
+        return false;
+      }
 
       if (startDate && endDate) {
         return tgl >= new Date(startDate) && tgl <= new Date(endDate);
@@ -73,11 +77,9 @@ export default function LaporanPage() {
   };
 
   const hasil = filterData();
-
   const total = hasil.reduce((s, d) => s + d.total, 0);
   const formatRp = (n: number) => n.toLocaleString("id-ID");
 
-  /* CHART */
   const group: Record<string, number> = {};
   hasil.forEach((d) => {
     const t = new Date(d.tanggal).toLocaleDateString();
@@ -96,89 +98,141 @@ export default function LaporanPage() {
     ],
   };
 
-  /* EXPORT PDF */
+  /* PDF */
   const exportPDF = () => {
-    const pdf = new jsPDF("p", "mm", "a4");
+    const pdf = new jsPDF();
     const w = pdf.internal.pageSize.getWidth();
 
-    /* ===== LOGO ===== */
-    // GANTI dengan logo Anda (letakkan di folder public/logo.png)
     pdf.addImage("/logo.png", "PNG", 14, 10, 20, 20);
 
-    /* ===== HEADER ===== */
     pdf.setFontSize(16);
-    pdf.text("LAUNDRY ANDA", w / 2, 15, { align: "center" });
+    pdf.text("AI LAUNDRY", w / 2, 15, { align: "center" });
 
     pdf.setFontSize(10);
-    pdf.text("Alamat: Desa Tapis", w / 2, 22, { align: "center" });
-    pdf.text("HP: 08xxxxxxxxxx", w / 2, 27, { align: "center" });
+    pdf.text("Laporan Keuangan", w / 2, 22, { align: "center" });
 
-    pdf.setFontSize(12);
-    pdf.text("LAPORAN KEUANGAN", w / 2, 35, { align: "center" });
+    pdf.text(`Total: Rp ${formatRp(total)}`, 14, 40);
+    pdf.text(`Transaksi: ${hasil.length}`, 14, 47);
 
-    const periode =
-      startDate && endDate
-        ? `${startDate} s/d ${endDate}`
-        : filter.toUpperCase();
-
-    pdf.setFontSize(10);
-    pdf.text(`Periode: ${periode}`, 14, 45);
-    pdf.text(`Total Omzet: Rp ${formatRp(total)}`, 14, 52);
-    pdf.text(`Jumlah Transaksi: ${hasil.length}`, 14, 58);
-
-    /* ===== TABEL ===== */
-    let y = 70;
-
-    pdf.text("Nama", 14, y);
-    pdf.text("Tanggal", 80, y);
-    pdf.text("Total", 160, y);
-
-    y += 5;
-
+    let y = 60;
     hasil.forEach((d) => {
-      if (y > 260) {
-        pdf.addPage();
-        y = 20;
-      }
-
-      pdf.text(d.nama, 14, y);
+      pdf.text(`${d.nama}`, 14, y);
       pdf.text(new Date(d.tanggal).toLocaleDateString(), 80, y);
-      pdf.text(`Rp ${formatRp(d.total)}`, 160, y);
-
+      pdf.text(`Rp ${formatRp(d.total)}`, 150, y);
       y += 6;
     });
 
-    /* ===== TANDA TANGAN ===== */
-    const yTtd = y + 15;
+    pdf.save("laporan.pdf");
+  };
 
-    pdf.text("Mengetahui,", 140, yTtd);
-    pdf.text("Pemilik Usaha", 140, yTtd + 5);
-
-    // GANTI dengan tanda tangan (public/ttd.png)
-    pdf.addImage("/ttd.png", "PNG", 135, yTtd + 8, 40, 20);
-
-    pdf.text("__________________", 140, yTtd + 35);
-    pdf.text("Nama Pemilik", 140, yTtd + 40);
-
-    pdf.save("laporan-resmi.pdf");
+  /* EXCEL */
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(hasil);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+    XLSX.writeFile(wb, "laporan.xlsx");
   };
 
   return (
-    <div>
-      <h2>📊 Laporan Keuangan</h2>
+    <div className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">📊 Laporan Keuangan</h1>
 
-      <button onClick={exportPDF}>📄 Export PDF Resmi</button>
+      {/* FILTER */}
+      <div className="grid md:grid-cols-5 gap-3 mb-4">
+        <select
+          className="border p-2 rounded"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="hari">Hari Ini</option>
+          <option value="minggu">7 Hari</option>
+          <option value="bulan">Bulan Ini</option>
+        </select>
 
-      <div style={{ marginTop: 20 }}>
-        <b>Total:</b> Rp {formatRp(total)} | {hasil.length} transaksi
+        <input
+          type="date"
+          className="border p-2 rounded"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+        />
+
+        <input
+          type="date"
+          className="border p-2 rounded"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+        />
+
+        <input
+          placeholder="Cari pelanggan..."
+          className="border p-2 rounded"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        <div className="flex gap-2">
+          <button
+            onClick={exportPDF}
+            className="bg-blue-600 text-white px-3 rounded"
+          >
+            PDF
+          </button>
+          <button
+            onClick={exportExcel}
+            className="bg-green-600 text-white px-3 rounded"
+          >
+            Excel
+          </button>
+        </div>
       </div>
 
-      <div style={{ marginTop: 20 }}>
+      {/* SUMMARY */}
+      <div className="bg-white shadow rounded p-4 mb-4 flex justify-between">
+        <div>
+          <p className="text-lg font-semibold">
+            Rp {formatRp(total)}
+          </p>
+          <p className="text-sm text-gray-500">Total Omzet</p>
+        </div>
+        <div>
+          <p className="text-lg font-semibold">{hasil.length}</p>
+          <p className="text-sm text-gray-500">Transaksi</p>
+        </div>
+      </div>
+
+      {/* CHART */}
+      <div className="bg-white shadow rounded p-4 mb-4">
         {Object.keys(group).length === 0 ? (
           <p>Tidak ada data</p>
         ) : (
           <Line data={chartData} />
         )}
+      </div>
+
+      {/* TABLE */}
+      <div className="bg-white shadow rounded p-4 overflow-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-gray-100">
+              <th className="text-left p-2">Nama</th>
+              <th className="text-left p-2">Tanggal</th>
+              <th className="text-right p-2">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {hasil.map((d) => (
+              <tr key={d.id} className="border-b hover:bg-gray-50">
+                <td className="p-2">{d.nama}</td>
+                <td className="p-2">
+                  {new Date(d.tanggal).toLocaleDateString()}
+                </td>
+                <td className="p-2 text-right">
+                  Rp {formatRp(d.total)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
