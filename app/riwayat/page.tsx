@@ -7,6 +7,8 @@ type LayananItem = {
   berat: number;
 };
 
+type StatusType = "proses" | "selesai" | "diambil";
+
 type Transaksi = {
   id: string;
   nomor: string;
@@ -16,187 +18,188 @@ type Transaksi = {
   tanggalSelesai: string;
   layanan: LayananItem[];
   total: number;
+  status?: StatusType;
 };
 
 export default function RiwayatPage() {
   const [data, setData] = useState<Transaksi[]>([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    try {
-      const getData = localStorage.getItem("transaksi");
-      if (getData) {
-        const parsed: Transaksi[] = JSON.parse(getData);
-        if (Array.isArray(parsed)) {
-          setData(parsed.reverse());
-        }
-      }
-    } catch (error) {
-      console.log("ERROR LOAD RIWAYAT:", error);
+    const getData = localStorage.getItem("transaksi");
+    if (getData) {
+      const parsed: Transaksi[] = JSON.parse(getData);
+
+      // default status = proses
+      const withStatus = parsed.map((d) => ({
+        ...d,
+        status: d.status || "proses",
+      }));
+
+      setData([...withStatus].reverse());
     }
   }, []);
 
-  // ✅ FIX TYPE
-  const formatRupiah = (angka: number | string) => {
-    return Number(angka).toLocaleString("id-ID");
+  const formatRupiah = (n: number) =>
+    n.toLocaleString("id-ID");
+
+  const updateStatus = (id: string, status: StatusType) => {
+    const updated = data.map((d) =>
+      d.id === id ? { ...d, status } : d
+    );
+
+    setData(updated);
+    localStorage.setItem("transaksi", JSON.stringify(updated));
   };
 
-  // ✅ FIX TYPE
-  const hapusTransaksi = (id: string) => {
-    const konfirmasi = confirm("Yakin ingin menghapus?");
-    if (!konfirmasi) return;
-
-    const dataBaru = data.filter((item) => item.id !== id);
-    setData(dataBaru);
-    localStorage.setItem("transaksi", JSON.stringify(dataBaru));
+  const getStatusStyle = (status: StatusType) => {
+    if (status === "proses")
+      return { background: "#f1c40f", color: "#000" };
+    if (status === "selesai")
+      return { background: "#3498db", color: "#fff" };
+    return { background: "#2ecc71", color: "#fff" };
   };
 
-  const today = new Date().toLocaleDateString();
-
-  const transaksiHariIni = data.filter((item) =>
-    item.tanggal.includes(today)
+  const filtered = data.filter((d) =>
+    d.nama.toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalHariIni = transaksiHariIni.reduce(
-    (sum, item) => sum + item.total,
-    0
-  );
-
-  // ✅ FIX TYPE
-  const cetakUlang = (id: string) => {
-    window.open(`/nota?id=${id}`, "_blank");
-  };
+  const total = filtered.reduce((s, d) => s + d.total, 0);
 
   return (
-    <div
-      style={{
-        backgroundColor: "#2ecc71",
-        minHeight: "100vh",
-        padding: "20px",
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: "white",
-          padding: "20px",
-          borderRadius: "10px",
-          color: "black",
-        }}
-      >
-        <h2 style={{ marginBottom: "15px" }}>Riwayat Transaksi</h2>
+    <div style={styles.container}>
 
-        {/* LAPORAN */}
-        <div
-          style={{
-            backgroundColor: "#dff9fb",
-            padding: "10px",
-            borderRadius: "5px",
-            marginBottom: "10px",
-          }}
-        >
-          <p><b>Laporan Hari Ini</b></p>
-          <p>Jumlah Transaksi: {transaksiHariIni.length}</p>
-          <p>Total Pendapatan: Rp {formatRupiah(totalHariIni)}</p>
+      {/* SIDEBAR */}
+      <div style={styles.sidebar}>
+        <h2>Laundry POS</h2>
+        <Menu text="Dashboard" />
+        <Menu text="Transaksi" />
+        <Menu text="Riwayat" active />
+      </div>
+
+      {/* MAIN */}
+      <div style={styles.main}>
+
+        {/* HEADER */}
+        <div style={styles.header}>
+          <h2>Riwayat Transaksi</h2>
+          <input
+            placeholder="Cari pelanggan..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={styles.search}
+          />
         </div>
 
-        {data.length === 0 && (
-          <p style={{ color: "red" }}>Belum ada transaksi</p>
-        )}
+        {/* SUMMARY */}
+        <div style={styles.summary}>
+          <b>Total:</b> Rp {formatRupiah(total)} |
+          <b> Transaksi:</b> {filtered.length}
+        </div>
 
-        {data.map((trx) => (
-          <div
-            key={trx.id}
-            style={{
-              border: "1px solid #ccc",
-              padding: "10px",
-              borderRadius: "5px",
-              marginBottom: "10px",
-            }}
-          >
-            <p><b>Nama:</b> {trx.nama}</p>
-            <p><b>WA:</b> {trx.wa}</p>
-            <p><b>Tanggal:</b> {trx.tanggal}</p>
-            <p><b>Selesai:</b> {trx.tanggalSelesai}</p>
+        {/* LIST */}
+        <div style={styles.list}>
+          {filtered.map((trx) => (
+            <div key={trx.id} style={styles.card}>
 
-            <table
-              style={{
-                width: "100%",
-                marginTop: "10px",
-                borderCollapse: "collapse",
-              }}
-            >
-              <thead>
-                <tr style={{ backgroundColor: "#bdc3c7" }}>
-                  <th style={{ border: "1px solid #999", padding: "5px" }}>
-                    Layanan
-                  </th>
-                  <th style={{ border: "1px solid #999", padding: "5px" }}>
-                    Harga
-                  </th>
-                  <th style={{ border: "1px solid #999", padding: "5px" }}>
-                    Berat
-                  </th>
-                  <th style={{ border: "1px solid #999", padding: "5px" }}>
-                    Total
-                  </th>
-                </tr>
-              </thead>
+              <div style={styles.cardTop}>
+                <div>
+                  <h3>{trx.nama}</h3>
+                  <p>{new Date(trx.tanggal).toLocaleString()}</p>
+                </div>
 
-              <tbody>
-                {trx.layanan.map((item, i) => (
-                  <tr key={i}>
-                    <td style={{ border: "1px solid #999", padding: "5px" }}>
-                      {item.nama}
-                    </td>
-                    <td style={{ border: "1px solid #999", padding: "5px" }}>
-                      Rp {formatRupiah(item.harga)}
-                    </td>
-                    <td style={{ border: "1px solid #999", padding: "5px" }}>
-                      {item.berat} Kg
-                    </td>
-                    <td style={{ border: "1px solid #999", padding: "5px" }}>
-                      Rp {formatRupiah(item.harga * item.berat)}
-                    </td>
-                  </tr>
+                <div style={{
+                  ...styles.badge,
+                  ...getStatusStyle(trx.status!)
+                }}>
+                  {trx.status?.toUpperCase()}
+                </div>
+              </div>
+
+              {/* LAYANAN */}
+              <div style={styles.layanan}>
+                {trx.layanan.map((l, i) => (
+                  <div key={i}>
+                    {l.nama} ({l.berat}kg)
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
 
-            <p style={{ marginTop: "10px", fontWeight: "bold" }}>
-              Total: Rp {formatRupiah(trx.total)}
-            </p>
+              <h3>Rp {formatRupiah(trx.total)}</h3>
 
-            <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-              <button
-                onClick={() => cetakUlang(trx.id)}
-                style={{
-                  backgroundColor: "blue",
-                  color: "white",
-                  padding: "5px 10px",
-                  border: "none",
-                  borderRadius: "5px",
-                  flex: 1,
-                }}
-              >
-                Cetak Ulang
-              </button>
+              {/* STATUS BUTTON */}
+              <div style={styles.actions}>
+                <button onClick={() => updateStatus(trx.id, "proses")}>
+                  Proses
+                </button>
+                <button onClick={() => updateStatus(trx.id, "selesai")}>
+                  Selesai
+                </button>
+                <button onClick={() => updateStatus(trx.id, "diambil")}>
+                  Diambil
+                </button>
+              </div>
 
-              <button
-                onClick={() => hapusTransaksi(trx.id)}
-                style={{
-                  backgroundColor: "red",
-                  color: "white",
-                  padding: "5px 10px",
-                  border: "none",
-                  borderRadius: "5px",
-                  flex: 1,
-                }}
-              >
-                Hapus
-              </button>
+              {/* AKSI */}
+              <div style={styles.actions}>
+                <button onClick={() => window.open(`/nota?id=${trx.id}`)}>
+                  Cetak
+                </button>
+                <button
+                  onClick={() => {
+                    const updated = data.filter(d => d.id !== trx.id);
+                    setData(updated);
+                    localStorage.setItem("transaksi", JSON.stringify(updated));
+                  }}
+                >
+                  Hapus
+                </button>
+              </div>
+
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
       </div>
     </div>
   );
 }
+
+/* COMPONENT */
+function Menu({ text, active = false }: any) {
+  return (
+    <div style={{
+      padding: "10px",
+      background: active ? "#34495e" : "transparent",
+      borderRadius: "8px",
+      marginBottom: "5px"
+    }}>
+      {text}
+    </div>
+  );
+}
+
+/* STYLE */
+const styles: any = {
+  container: { display: "flex", minHeight: "100vh", background: "#f5f6fa" },
+  sidebar: { width: "220px", background: "#2c3e50", color: "white", padding: "20px" },
+  main: { flex: 1, padding: "20px" },
+  header: { display: "flex", justifyContent: "space-between", marginBottom: "20px" },
+  search: { padding: "10px", borderRadius: "8px", border: "1px solid #ddd" },
+  summary: { marginBottom: "15px" },
+  list: { display: "flex", flexDirection: "column", gap: "15px" },
+  card: {
+    background: "white",
+    padding: "15px",
+    borderRadius: "12px",
+    boxShadow: "0 3px 8px rgba(0,0,0,0.05)"
+  },
+  cardTop: { display: "flex", justifyContent: "space-between" },
+  badge: {
+    padding: "5px 10px",
+    borderRadius: "8px",
+    fontWeight: "bold"
+  },
+  layanan: { margin: "10px 0" },
+  actions: { display: "flex", gap: "10px", marginTop: "10px" }
+};
