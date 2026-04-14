@@ -51,7 +51,7 @@ export default function RiwayatPage() {
           wa: d.wa || "-",
           tanggal,
           tanggalSelesai: d.tanggalSelesai || tanggal,
-          layanan: d.layanan || [],
+          layanan: Array.isArray(d.layanan) ? d.layanan : [],
           total: Number(d.total) || 0,
           status: d.status || "proses",
         };
@@ -68,17 +68,14 @@ export default function RiwayatPage() {
   const formatTanggal = (tgl: string) => {
     const d = new Date(tgl);
     if (isNaN(d.getTime())) return "-";
-    return d.toLocaleString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return d.toLocaleString("id-ID");
   };
 
-  const toInputDateTime = (iso: string) => {
+  /* 🔥 FIX ANTI CRASH */
+  const toInputDateTime = (iso?: string) => {
+    if (!iso) return "";
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
     return d.toISOString().slice(0, 16);
   };
 
@@ -140,7 +137,7 @@ export default function RiwayatPage() {
 
   const total = filtered.reduce((s, d) => s + d.total, 0);
 
-  /* ================= CETAK NOTA ================= */
+  /* ================= CETAK ================= */
   const cetakNota = (trx: Transaksi) => {
     localStorage.setItem("printData", JSON.stringify(trx));
     window.open("/nota", "_blank");
@@ -157,29 +154,15 @@ export default function RiwayatPage() {
         className="border p-3 rounded w-full mb-4"
       />
 
-      {/* SUMMARY */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500 text-sm">Total Omzet</p>
-          <p className="font-bold text-lg">
-            Rp {formatRupiah(total)}
-          </p>
-        </div>
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-gray-500 text-sm">Transaksi</p>
-          <p className="font-bold text-lg">{filtered.length}</p>
-        </div>
-      </div>
-
       {/* MODAL EDIT */}
       {editData && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded w-full max-w-lg space-y-3">
             <h2 className="font-bold text-lg">Edit Transaksi</h2>
 
             <input
               className="border p-2 rounded w-full"
-              value={editData.nama}
+              value={editData.nama || ""}
               onChange={(e) =>
                 setEditData({ ...editData, nama: e.target.value })
               }
@@ -187,14 +170,12 @@ export default function RiwayatPage() {
 
             <input
               className="border p-2 rounded w-full"
-              value={editData.wa}
+              value={editData.wa || ""}
               onChange={(e) =>
                 setEditData({ ...editData, wa: e.target.value })
               }
             />
 
-            {/* 🔥 TANGGAL MASUK */}
-            <label className="text-sm">Tanggal Masuk</label>
             <input
               type="datetime-local"
               className="border p-2 rounded w-full"
@@ -204,8 +185,6 @@ export default function RiwayatPage() {
               }
             />
 
-            {/* 🔥 TANGGAL SELESAI (FIX UTAMA) */}
-            <label className="text-sm">Tanggal Selesai</label>
             <input
               type="datetime-local"
               className="border p-2 rounded w-full"
@@ -218,7 +197,6 @@ export default function RiwayatPage() {
               }
             />
 
-            {/* STATUS */}
             <select
               className="border p-2 rounded w-full"
               value={editData.status}
@@ -240,7 +218,7 @@ export default function RiwayatPage() {
               <div key={i} className="grid grid-cols-3 gap-2">
                 <input
                   className="border p-2 rounded"
-                  value={l.nama}
+                  value={l.nama || ""}
                   onChange={(e) =>
                     updateLayanan(i, "nama", e.target.value)
                   }
@@ -248,7 +226,7 @@ export default function RiwayatPage() {
                 <input
                   type="number"
                   className="border p-2 rounded"
-                  value={l.harga}
+                  value={l.harga || 0}
                   onChange={(e) =>
                     updateLayanan(i, "harga", e.target.value)
                   }
@@ -256,7 +234,7 @@ export default function RiwayatPage() {
                 <input
                   type="number"
                   className="border p-2 rounded"
-                  value={l.berat}
+                  value={l.berat || 0}
                   onChange={(e) =>
                     updateLayanan(i, "berat", e.target.value)
                   }
@@ -303,41 +281,11 @@ export default function RiwayatPage() {
       <div className="space-y-4">
         {filtered.map((trx) => (
           <div key={trx.id} className="bg-white p-4 rounded shadow">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-bold">{trx.nama}</h3>
-                <p className="text-xs text-gray-500">
-                  Masuk: {formatTanggal(trx.tanggal)}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Selesai: {formatTanggal(trx.tanggalSelesai)}
-                </p>
-              </div>
+            <h3 className="font-bold">{trx.nama}</h3>
 
-              <span
-                className={`px-3 py-1 rounded text-white text-sm ${getStatusColor(
-                  trx.status
-                )}`}
-              >
-                {trx.status}
-              </span>
-            </div>
-
-            <div className="mt-2 text-sm">
-              {trx.layanan.map((l, i) => (
-                <div key={i}>
-                  {l.nama} - {l.berat}kg
-                </div>
-              ))}
-            </div>
-
-            <p className="font-bold mt-2">
-              Rp {formatRupiah(trx.total)}
-            </p>
-
-            <div className="flex flex-wrap gap-2 mt-3">
+            <div className="flex gap-2 mt-2">
               <button
-                onClick={() => setEditData(trx)}
+                onClick={() => setEditData({ ...trx })}
                 className="bg-yellow-500 text-white px-2 rounded"
               >
                 Edit
@@ -348,20 +296,6 @@ export default function RiwayatPage() {
                 className="bg-purple-600 text-white px-2 rounded"
               >
                 Cetak Nota
-              </button>
-
-              <button
-                onClick={() => {
-                  const updated = data.filter((d) => d.id !== trx.id);
-                  setData(updated);
-                  localStorage.setItem(
-                    "transaksi",
-                    JSON.stringify(updated)
-                  );
-                }}
-                className="bg-red-500 text-white px-2 rounded"
-              >
-                Hapus
               </button>
             </div>
           </div>

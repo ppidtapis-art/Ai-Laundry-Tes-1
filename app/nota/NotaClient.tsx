@@ -10,7 +10,7 @@ type LayananItem = {
 };
 
 type Nota = {
-  id: number;
+  id: string; // 🔥 FIX (string)
   nomor: string;
   nama: string;
   wa: string;
@@ -25,20 +25,47 @@ export default function NotaClient() {
   const id = searchParams.get("id");
 
   const [data, setData] = useState<Nota | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const transaksi = localStorage.getItem("transaksi");
+    try {
+      const transaksi = localStorage.getItem("transaksi");
 
-    if (transaksi) {
+      if (!transaksi) {
+        setLoading(false);
+        return;
+      }
+
       const parsed: Nota[] = JSON.parse(transaksi);
-      const found = parsed.find((item) => item.id === Number(id));
 
-      if (found) setData(found);
+      // 🔥 FIX CARI ID STRING
+      const found = parsed.find((item) => item.id === id);
+
+      if (found) {
+        setData(found);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
     }
   }, [id]);
 
   const formatRupiah = (angka: number) => {
     return "Rp " + angka.toLocaleString("id-ID");
+  };
+
+  const formatTanggal = (tgl: string) => {
+    const d = new Date(tgl);
+    if (isNaN(d.getTime())) return "-";
+    return d.toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const kirimWA = async () => {
@@ -52,35 +79,48 @@ export default function NotaClient() {
     }
 
     try {
-      // convert jadi gambar
       const canvas = await html2canvas(element);
       const image = canvas.toDataURL("image/png");
 
-      // download otomatis
       const link = document.createElement("a");
       link.href = image;
       link.download = `nota-${data.nomor}.png`;
       link.click();
 
-      // buka WhatsApp
       const nomor = data.wa.replace(/^0/, "62");
       window.open(`https://wa.me/${nomor}`, "_blank");
 
-      alert("Nota sudah didownload, silakan kirim ke WhatsApp.");
+      alert("Nota sudah didownload & siap dikirim ke WhatsApp");
     } catch (error) {
       console.log(error);
       alert("Gagal membuat gambar nota");
     }
   };
 
-  if (!data) return <p style={{ textAlign: "center" }}>Loading...</p>;
+  /* ================= LOADING ================= */
+  if (loading) {
+    return (
+      <div className="centerPage">
+        <p>Memuat nota...</p>
+      </div>
+    );
+  }
+
+  /* ================= DATA TIDAK ADA ================= */
+  if (!data) {
+    return (
+      <div className="centerPage">
+        <p>❌ Data nota tidak ditemukan</p>
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="nota">
         <div className="center">
           <img src="/logo.png" className="logo" />
-          <h2>LAUNDRY ANDA</h2>
+          <h2>AI LAUNDRY</h2>
           <p>Bersih • Wangi • Rapi</p>
           <p>WA: 0813-4703-3944</p>
         </div>
@@ -89,8 +129,8 @@ export default function NotaClient() {
           <p>No: {data.nomor}</p>
           <p>Nama: {data.nama}</p>
           <p>WA: {data.wa}</p>
-          <p>Tgl: {data.tanggal}</p>
-          <p>Ambil: {data.tanggalSelesai}</p>
+          <p>Tgl: {formatTanggal(data.tanggal)}</p>
+          <p>Ambil: {formatTanggal(data.tanggalSelesai)}</p>
         </div>
 
         <div className="divider" />
@@ -99,7 +139,9 @@ export default function NotaClient() {
           <div key={i} className="item">
             <div>{item.nama}</div>
             <div className="row">
-              <span>{item.berat} Kg x {formatRupiah(item.harga)}</span>
+              <span>
+                {item.berat} Kg x {formatRupiah(item.harga)}
+              </span>
               <span>{formatRupiah(item.harga * item.berat)}</span>
             </div>
           </div>
@@ -113,7 +155,10 @@ export default function NotaClient() {
         </div>
 
         <div className="footer">
-          <p>Terima kasih dari ai Loundry — cucian beres, kamu tinggal tampil percaya diri 😎</p>
+          <p>
+            Terima kasih dari ai Laundry — cucian beres, kamu tinggal tampil
+            percaya diri 😎
+          </p>
           <p>Simpan nota ini saat pengambilan</p>
         </div>
 
@@ -124,19 +169,24 @@ export default function NotaClient() {
         <button onClick={kirimWA} className="waBtn">
           📲 Kirim WhatsApp
         </button>
-
       </div>
 
       <style jsx>{`
+        .centerPage {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+        }
+
         .nota {
-          width: 280px;
+          width: 300px;
           margin: auto;
           background: #fff;
-          color: #000;
-          border: 2px solid #22c55e;
-          border-radius: 10px;
-          padding: 15px;
+          border-radius: 12px;
+          padding: 18px;
           font-family: monospace;
+          box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
 
         .center {
@@ -153,7 +203,7 @@ export default function NotaClient() {
         }
 
         .divider {
-          border-top: 1px dashed #000;
+          border-top: 1px dashed #999;
           margin: 10px 0;
         }
 
@@ -170,13 +220,14 @@ export default function NotaClient() {
           display: flex;
           justify-content: space-between;
           font-weight: bold;
-          font-size: 14px;
+          font-size: 15px;
         }
 
         .footer {
           text-align: center;
           margin-top: 10px;
           font-size: 11px;
+          color: #555;
         }
 
         .printBtn {
@@ -186,7 +237,7 @@ export default function NotaClient() {
           background: #22c55e;
           color: #fff;
           border: none;
-          border-radius: 6px;
+          border-radius: 8px;
           font-size: 16px;
         }
 
@@ -197,18 +248,16 @@ export default function NotaClient() {
           background: #25D366;
           color: #fff;
           border: none;
-          border-radius: 6px;
+          border-radius: 8px;
           font-size: 16px;
         }
 
         @media print {
-          body {
-            margin: 0;
-          }
-          .printBtn {
+          .printBtn, .waBtn {
             display: none;
           }
           .nota {
+            box-shadow: none;
             border: none;
             width: 100%;
           }
