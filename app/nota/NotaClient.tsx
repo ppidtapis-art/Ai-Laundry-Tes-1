@@ -44,7 +44,7 @@ export default function NotaClient() {
     if (!data) return;
 
     const pesan = `
-  *LAUNDRY ANDA*
+  *Ai LAUNDRY*
   -------------------------
   No: ${data.nomor}
   Nama: ${data.nama}
@@ -79,7 +79,7 @@ export default function NotaClient() {
         <div className="center">
           <img src="/logo.png" className="logo" />
           <h2>LAUNDRY ANDA</h2>
-          <p>Cuci • Setrika • Express</p>
+          <p>Bersih • Wangi • Rapi</p>
           <p>WA: 0813-4703-3944</p>
         </div>
 
@@ -111,7 +111,7 @@ export default function NotaClient() {
         </div>
 
         <div className="footer">
-          <p>Terima kasih 🙏</p>
+          <p>Terima kasih dari ai Loundry — cucian beres, kamu tinggal tampil percaya diri 😎</p>
           <p>Simpan nota ini saat pengambilan</p>
         </div>
 
