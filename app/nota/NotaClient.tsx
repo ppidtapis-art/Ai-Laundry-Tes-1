@@ -106,21 +106,43 @@ export default function NotaClient() {
 
   const handleDownload = async () => {
     if (!notaRef.current) return;
+
     const canvas = await html2canvas(notaRef.current, {
       backgroundColor: "#ffffff",
+      scale: 3, // 🔥 biar HD (WA ga kecil)
+      width: notaRef.current.offsetWidth,
+      height: notaRef.current.offsetHeight,
+      useCORS: true,
     });
 
+    const dataUrl = canvas.toDataURL("image/png", 1.0);
+
     const link = document.createElement("a");
-    link.href = canvas.toDataURL("image/png");
+    link.href = dataUrl;
     link.download = `nota-${data?.nomor}.png`;
     link.click();
+
+    return dataUrl;
   };
 
   const kirimWA = async () => {
     if (!data) return;
-    await handleDownload();
+
+    await handleDownload(); // otomatis download HD
+
     const nomor = data.wa.replace(/^0/, "62");
-    window.open(`https://wa.me/${nomor}`, "_blank");
+
+    const pesan = `🧾 *Nota Laundry*
+  No: ${data.nomor}
+  Nama: ${data.nama}
+  Total: ${formatRp(data.total)}
+
+  Terima kasih 🙏`;
+
+    window.open(
+      `https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`,
+      "_blank"
+    );
   };
 
   if (loading) return <div className="center">Memuat...</div>;
@@ -137,7 +159,7 @@ export default function NotaClient() {
           <b>AI LAUNDRY</b>
           <div>Cuci • Setrika • Rapi • Wangi</div>
           <div style={{ fontSize: 12 }}>
-            Jl. Contoh No. 123, Tapis <br />
+            Perum Korpri Tapis Blok B Gg Tirta 7 <br />
             Kec. Tanah Grogot, Kab. Paser
           </div>
           <div>WA : 0813-4703-3944</div>
@@ -245,11 +267,10 @@ export default function NotaClient() {
         .center { text-align: center; margin-top: 50px; }
 
         .nota {
-          width: 100%;
-          max-width: 380px;
+          width: 320px; /* 🔥 FIX biar ga kepanjangan */
           margin: auto;
           padding: 16px;
-          font-family: monospace;
+          font-family: "Courier New", monospace;
           background: #fff;
           color: #000;
           border: 2px solid #16a34a;
