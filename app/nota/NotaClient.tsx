@@ -1,13 +1,7 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import html2canvas from "html2canvas";
-
-type LayananItem = {
-  nama: string;
-  harga: number;
-  berat: number;
-};
 
 type Nota = {
   id: string;
@@ -16,8 +10,9 @@ type Nota = {
   wa: string;
   tanggal: string;
   tanggalSelesai: string;
-  layanan: LayananItem[];
   total: number;
+  items?: any[];
+  layanan?: any[];
 };
 
 export default function NotaClient() {
@@ -27,47 +22,65 @@ export default function NotaClient() {
   const [data, setData] = useState<Nota | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const notaRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    try {
-      const transaksi = localStorage.getItem("transaksi");
-      if (!transaksi) return setLoading(false);
+    const trx = JSON.parse(localStorage.getItem("transaksi") || "[]");
+    const found = trx.find((x: any) => String(x.id) === String(id));
 
-      const parsed: Nota[] = JSON.parse(transaksi);
-
-      const found = parsed.find(
-        (item) => String(item.id) === String(id)
-      );
-
-      if (found) setData(found);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
+    if (found && !found.tanggalSelesai) {
+      found.tanggalSelesai = found.tanggal;
     }
+
+    setData(found || null);
+    setLoading(false);
   }, [id]);
 
-  const formatRupiah = (n: number) =>
-    "Rp " + n.toLocaleString("id-ID");
+  const formatRp = (n: number) => "Rp " + n.toLocaleString("id-ID");
 
   const formatTanggal = (tgl: string) => {
+    if (!tgl) return "-";
     const d = new Date(tgl);
-    if (isNaN(d.getTime())) return "-";
-    return d.toLocaleString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+    if (!isNaN(d.getTime())) return d.toLocaleDateString("id-ID");
+    return tgl;
+  };
+
+  const getItems = () => {
+    if (!data) return [];
+    return (data.items || data.layanan || []).map((l: any) => {
+      const qty = l.qty || l.berat || 0;
+      const total = l.qty
+        ? l.qty * l.harga
+        : (l.berat || 0) * l.harga;
+
+      return {
+        nama: l.nama,
+        qty,
+        harga: l.harga,
+        total,
+        tipe: l.qty ? "item" : "kg",
+      };
     });
   };
 
-  const handleDownload = async () => {
-    const el = document.querySelector(".nota") as HTMLElement;
-    if (!el) return;
+  /* ===== QR CODE (API GRATIS) ===== */
+  const getQR = () => {
+    if (!data) return "";
 
-    const canvas = await html2canvas(el);
-    const img = canvas.toDataURL("image/png");
+    const text = `TRX:${data.nomor}\nNama:${data.nama}\nTotal:${formatRp(data.total)}`;
+
+    return `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(text)}`;
+  };
+
+  const handleDownload = async () => {
+    if (!notaRef.current) return;
+
+    const canvas = await html2canvas(notaRef.current, {
+      backgroundColor: "#ffffff",
+    });
 
     const link = document.createElement("a");
-    link.href = img;
+    link.href = canvas.toDataURL("image/png");
     link.download = `nota-${data?.nomor}.png`;
     link.click();
   };
@@ -76,92 +89,96 @@ export default function NotaClient() {
     if (!data) return;
 
     await handleDownload();
-
     const nomor = data.wa.replace(/^0/, "62");
 
-    const text = encodeURIComponent(
-      `Halo ${data.nama},\nLaundry kamu sudah siap diambil 🧺\nTotal: ${formatRupiah(
-        data.total
-      )}\nTerima kasih 🙏`
-    );
-
-    window.open(`https://wa.me/${nomor}?text=${text}`, "_blank");
+    window.open(`https://wa.me/${nomor}`, "_blank");
   };
 
-  if (loading) {
-    return <div className="center">Memuat nota...</div>;
-  }
+  if (loading) return <div className="center">Memuat...</div>;
+  if (!data) return <div className="center">❌ Data tidak ditemukan</div>;
 
-  if (!data) {
-    return <div className="center">❌ Data tidak ditemukan</div>;
-  }
+  const items = getItems();
 
   return (
     <>
-      <div className="nota">
-        {/* HEADER */}
-        <div className="header">
-          <h2>AI LAUNDRY</h2>
-          <p>Bersih • Wangi • Rapi</p>
-          <p>WA: 0813-4703-3944</p>
-        </div>
-
-        <div className="line" />
-
-        {/* INFO */}
-        <div className="info">
-          <p>No : {data.nomor}</p>
-          <p>Nama : {data.nama}</p>
-          <p>Tgl : {formatTanggal(data.tanggal)}</p>
-          <p>Ambil : {formatTanggal(data.tanggalSelesai)}</p>
-        </div>
-
-        <div className="line" />
-
-        {/* TABLE */}
-        <div className="table">
-          <div className="row head">
-            <span>Layanan</span>
-            <span>Qty</span>
-            <span>Total</span>
+      <div
+        ref={notaRef}
+        className="nota"
+        style={{ backgroundColor: "#fff", color: "#000" }}
+      >
+        <center>
+          <img src="/logo.png" alt="logo" style={{ width: 60 }} />
+          <b>AI LAUNDRY</b>
+          <div>Cuci • Setrika • Rapi • Wangi</div>
+          <div style={{ fontSize: 12 }}>
+            Jl. Contoh No. 123, Tapis <br />
+            Kec. Tanah Grogot, Kab. Paser
           </div>
+          <div>WA : 0813-4703-3944</div>
+        </center>
 
-          {data.layanan.map((l, i) => (
-            <div key={i} className="row">
-              <span>{l.nama}</span>
-              <span>{l.berat}kg</span>
-              <span>{formatRupiah(l.harga * l.berat)}</span>
-            </div>
-          ))}
+        <div className="line" />
+
+        <div>
+          <div>No Trx : {data.nomor}</div>
+          <div>Nama : {data.nama}</div>
+          <div>HP/WA : {data.wa}</div>
+          <div>Tgl Masuk : {formatTanggal(data.tanggal)}</div>
+          <div>Tgl Selesai : {formatTanggal(data.tanggalSelesai)}</div>
         </div>
 
         <div className="line" />
 
-        {/* TOTAL */}
+        {items.map((l, i) => (
+          <div key={i} style={{ marginBottom: "6px" }}>
+            <div>{l.nama}</div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>
+                {l.tipe === "kg"
+                  ? `${l.qty} Kg x ${l.harga.toLocaleString()}`
+                  : `${l.qty} x ${l.harga.toLocaleString()}`}
+              </span>
+              <span>{formatRp(l.total)}</span>
+            </div>
+          </div>
+        ))}
+
+        <div className="line" />
+
         <div className="total">
           <span>TOTAL</span>
-          <span>{formatRupiah(data.total)}</span>
+          <span>{formatRp(data.total)}</span>
         </div>
 
         <div className="line" />
 
-        {/* FOOTER */}
-        <div className="footer">
-          <p>Terima kasih 🙏</p>
-          <p>Simpan nota saat pengambilan</p>
-        </div>
+        {/* QR CODE */}
+        <center style={{ marginTop: 10 }}>
+          <img src={getQR()} alt="QR Code" />
+          <div style={{ fontSize: 10, marginTop: 4 }}>
+            Scan untuk cek transaksi
+          </div>
+        </center>
 
-        {/* BUTTON */}
+        <div className="line" />
+
+        <center style={{ marginTop: 10 }}>
+          Terima Kasih telah menggunakan Jasa Kami
+        </center>
+      </div>
+
+      {/* BUTTON */}
+      <div className="wrapper">
         <button onClick={() => window.print()} className="btn print">
-          🖨 Print
+          Print
         </button>
 
         <button onClick={handleDownload} className="btn download">
-          ⬇ Download
+          Download
         </button>
 
         <button onClick={kirimWA} className="btn wa">
-          📲 Kirim WhatsApp
+          Kirim WA
         </button>
       </div>
 
@@ -174,55 +191,25 @@ export default function NotaClient() {
         .nota {
           width: 320px;
           margin: auto;
-          background: white;
           padding: 16px;
           font-family: monospace;
-          border-radius: 10px;
-          box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        .header {
-          text-align: center;
-        }
-
-        .header h2 {
-          margin: 0;
+          border: 1px solid #ddd;
         }
 
         .line {
-          border-top: 1px dashed #999;
+          border-top: 1px dashed #000;
           margin: 10px 0;
-        }
-
-        .info p {
-          margin: 2px 0;
-        }
-
-        .table {
-          font-size: 13px;
-        }
-
-        .row {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 3px;
-        }
-
-        .head {
-          font-weight: bold;
         }
 
         .total {
           display: flex;
           justify-content: space-between;
           font-weight: bold;
-          font-size: 15px;
         }
 
-        .footer {
-          text-align: center;
-          font-size: 12px;
-          margin-top: 10px;
+        .wrapper {
+          max-width: 320px;
+          margin: auto;
         }
 
         .btn {
@@ -230,31 +217,24 @@ export default function NotaClient() {
           margin-top: 8px;
           padding: 10px;
           border: none;
-          border-radius: 6px;
           color: white;
-          font-size: 14px;
         }
 
         .print {
-          background: #22c55e;
+          background: #16a34a;
         }
 
         .download {
-          background: #3b82f6;
+          background: #2563eb;
         }
 
         .wa {
-          background: #25D366;
+          background: #25d366;
         }
 
         @media print {
-          .btn {
+          .wrapper {
             display: none;
-          }
-          .nota {
-            box-shadow: none;
-            border-radius: 0;
-            width: 100%;
           }
         }
       `}</style>
