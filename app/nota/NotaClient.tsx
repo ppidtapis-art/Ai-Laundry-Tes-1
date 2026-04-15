@@ -50,18 +50,22 @@ export default function NotaClient() {
 
   const getItems = () => {
     if (!data) return [];
+
     return (data.items || data.layanan || []).map((l: any) => {
-      const qty = l.qty || l.berat || 0;
-      const total = l.qty
-        ? l.qty * l.harga
-        : (l.berat || 0) * l.harga;
+      const isKg = l.tipe === "kg" || l.berat !== undefined;
+
+      const qty = isKg
+        ? Number(l.berat || 0)
+        : Number(l.qty || 0);
+
+      const total = qty * Number(l.harga || 0);
 
       return {
         nama: l.nama,
         qty,
         harga: l.harga,
         total,
-        tipe: l.qty ? "item" : "kg",
+        tipe: isKg ? "kg" : "item",
       };
     });
   };
