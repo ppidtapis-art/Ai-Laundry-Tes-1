@@ -22,6 +22,21 @@ type Pelanggan = {
   wa: string;
 };
 
+/* ===============================
+   🔥 MEMBER + DISKON
+=============================== */
+const getLevelMember = (total: number) => {
+  if (total >= 1500000) return { level: "Platinum", color: "#8e44ad" };
+  if (total >= 500000) return { level: "Gold", color: "#f1c40f" };
+  return { level: "Silver", color: "#bdc3c7" };
+};
+
+const getDiskon = (level: string) => {
+  if (level === "Platinum") return 0.1;
+  if (level === "Gold") return 0.05;
+  return 0;
+};
+
 export default function TransaksiPage() {
   const [layanan, setLayanan] = useState<Layanan[]>([]);
   const [selected, setSelected] = useState<Selected[]>([]);
@@ -29,17 +44,17 @@ export default function TransaksiPage() {
   const [nama, setNama] = useState("");
   const [wa, setWa] = useState("");
 
+  useEffect(() => {
+    setLayanan(JSON.parse(localStorage.getItem("layanan") || "[]"));
+    setPelangganList(JSON.parse(localStorage.getItem("pelanggan") || "[]"));
+  }, []);
+
   const normalizeWA = (n: string) => {
     const clean = n.replace(/[^0-9]/g, "");
     if (clean.startsWith("62")) return clean;
     if (clean.startsWith("0")) return "62" + clean.slice(1);
     return clean;
   };
-
-  useEffect(() => {
-    setLayanan(JSON.parse(localStorage.getItem("layanan") || "[]"));
-    setPelangganList(JSON.parse(localStorage.getItem("pelanggan") || "[]"));
-  }, []);
 
   const pilihPelanggan = (id: number) => {
     const p = pelangganList.find((x) => x.id === id);
@@ -65,13 +80,23 @@ export default function TransaksiPage() {
   };
 
   const updateBerat = (id: number, val: number) => {
-    setSelected(selected.map((x) => (x.id === id ? { ...x, berat: val } : x)));
+    setSelected(selected.map((x) =>
+      x.id === id ? { ...x, berat: val } : x
+    ));
   };
 
-  const getSubTotal = (x: Selected) =>
+  const getSubTotalItem = (x: Selected) =>
     x.tipe === "kg" ? x.harga * (x.berat || 0) : x.harga * x.qty;
 
-  const total = selected.reduce((s, x) => s + getSubTotal(x), 0);
+  const subtotal = selected.reduce((s, x) => s + getSubTotalItem(x), 0);
+
+  /* ===============================
+     🔥 HITUNG DISKON REAL-TIME
+  =============================== */
+  const member = getLevelMember(subtotal);
+  const persenDiskon = getDiskon(member.level);
+  const potongan = subtotal * persenDiskon;
+  const totalAkhir = subtotal - potongan;
 
   const getEstimasi = () => {
     if (!selected.length) return "-";
@@ -83,15 +108,30 @@ export default function TransaksiPage() {
 
   const formatRp = (n: number) => "Rp " + n.toLocaleString("id-ID");
 
-  /* ===== SIMPAN + REDIRECT ===== */
+  /* ===============================
+     🔥 SIMPAN
+  =============================== */
   const simpanDanKeNota = () => {
-    if (!nama || !wa || !selected.length) {
-      alert("Lengkapi data");
-      return;
-    }
+    if (!nama || !wa || !selected.length) return alert("Lengkapi data");
 
     const trxId = Date.now();
     const norm = normalizeWA(wa);
+
+    let pelangganLama: Pelanggan[] = JSON.parse(
+      localStorage.getItem("pelanggan") || "[]"
+    );
+
+    const idx = pelangganLama.findIndex((p) => p.wa === norm);
+
+    if (idx !== -1) pelangganLama[idx].nama = nama;
+    else
+      pelangganLama.unshift({
+        id: Date.now(),
+        nama,
+        wa: norm,
+      });
+
+    localStorage.setItem("pelanggan", JSON.stringify(pelangganLama));
 
     const trx = {
       id: trxId,
@@ -99,7 +139,12 @@ export default function TransaksiPage() {
       nama,
       wa: norm,
       items: selected,
-      total,
+
+      subtotal,
+      diskon: potongan,
+      level: member.level,
+      total: totalAkhir,
+
       status: "Proses",
       tanggal: new Date().toISOString(),
       tanggalSelesai: getEstimasi(),
@@ -108,108 +153,85 @@ export default function TransaksiPage() {
     const lama = JSON.parse(localStorage.getItem("transaksi") || "[]");
     localStorage.setItem("transaksi", JSON.stringify([trx, ...lama]));
 
-    // 🔥 PINDAH KE HALAMAN NOTA
     window.location.href = `/nota?id=${trxId}`;
   };
 
   return (
-    <div className="p-4 bg-gray-100 min-h-screen">
-      <div className="max-w-3xl mx-auto space-y-4">
+    <div className="p-4 max-w-3xl mx-auto space-y-4">
 
-        {/* PELANGGAN */}
-        <div className="bg-white p-4 rounded shadow">
-          <select
-            className="border p-2 w-full"
-            onChange={(e) => pilihPelanggan(Number(e.target.value))}
-          >
-            <option value="">Pilih Pelanggan</option>
-            {pelangganList.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nama} - {p.wa}
-              </option>
-            ))}
-          </select>
+      {/* PELANGGAN */}
+      <div className="bg-white p-4 rounded shadow">
+        <select onChange={(e) => pilihPelanggan(Number(e.target.value))} className="border p-2 w-full">
+          <option value="">Pilih Pelanggan</option>
+          {pelangganList.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nama} - {p.wa}
+            </option>
+          ))}
+        </select>
 
-          <input
-            className="border p-2 w-full mt-2"
-            placeholder="Nama"
-            value={nama}
-            onChange={(e) => setNama(e.target.value)}
-          />
-
-          <input
-            className="border p-2 w-full mt-2"
-            placeholder="WA"
-            value={wa}
-            onChange={(e) => setWa(e.target.value)}
-          />
-        </div>
-
-        {/* LAYANAN */}
-        <div className="bg-white p-4 rounded shadow">
-          {layanan.map((l) => {
-            const s = selected.find((x) => x.id === l.id);
-
-            return (
-              <div
-                key={l.id}
-                className={`border p-2 mb-2 ${s ? "bg-green-100" : ""}`}
-                onClick={() => toggleLayanan(l)}
-              >
-                <div className="font-semibold">
-                  {l.nama} - {formatRp(l.harga)}
-                </div>
-
-                {s && (
-                  <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                    {l.tipe === "kg" ? (
-                      <>
-                        <label>Berat (Kg)</label>
-                        <input
-                          type="number"
-                          className="border p-1 w-full"
-                          value={s.berat}
-                          onChange={(e) =>
-                            updateBerat(l.id, Number(e.target.value))
-                          }
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <label>Jumlah</label>
-                        <input
-                          type="number"
-                          className="border p-1 w-full"
-                          value={s.qty}
-                          onChange={(e) =>
-                            updateQty(l.id, Number(e.target.value))
-                          }
-                        />
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* TOTAL */}
-        <div className="bg-white p-4 rounded shadow">
-          <div className="flex justify-between font-bold">
-            <span>TOTAL</span>
-            <span>{formatRp(total)}</span>
-          </div>
-
-          <button
-            onClick={simpanDanKeNota}
-            className="w-full bg-green-600 text-white p-2 mt-2"
-          >
-            Simpan & Lihat Nota
-          </button>
-        </div>
-
+        <input className="border p-2 w-full mt-2" placeholder="Nama" value={nama} onChange={(e) => setNama(e.target.value)} />
+        <input className="border p-2 w-full mt-2" placeholder="WA" value={wa} onChange={(e) => setWa(e.target.value)} />
       </div>
+
+      {/* LAYANAN */}
+      <div className="bg-white p-4 rounded shadow">
+        {layanan.map((l) => {
+          const s = selected.find((x) => x.id === l.id);
+
+          return (
+            <div key={l.id} className={`border p-2 mb-2 ${s ? "bg-green-100" : ""}`} onClick={() => toggleLayanan(l)}>
+              <div>{l.nama} - {formatRp(l.harga)}</div>
+
+              {s && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  {l.tipe === "kg" ? (
+                    <input type="number" value={s.berat} onChange={(e) => updateBerat(l.id, Number(e.target.value))} />
+                  ) : (
+                    <input type="number" value={s.qty} onChange={(e) => updateQty(l.id, Number(e.target.value))} />
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* TOTAL */}
+      <div className="bg-white p-4 rounded shadow">
+        <div>Subtotal: {formatRp(subtotal)}</div>
+
+        <div>
+          Member:
+          <span style={{
+            marginLeft: 6,
+            padding: "3px 8px",
+            borderRadius: 10,
+            background: member.color,
+            color: "#fff",
+            fontSize: 12
+          }}>
+            {member.level}
+          </span>
+        </div>
+
+        {potongan > 0 && (
+          <div style={{ color: "green" }}>
+            Diskon: -{formatRp(potongan)}
+          </div>
+        )}
+
+        <hr />
+
+        <div className="text-lg font-bold">
+          Total Bayar: {formatRp(totalAkhir)}
+        </div>
+
+        <button onClick={simpanDanKeNota} className="w-full bg-green-600 text-white p-3 mt-3 rounded">
+          Simpan & Nota
+        </button>
+      </div>
+
     </div>
   );
 }

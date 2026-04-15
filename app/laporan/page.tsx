@@ -1,26 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Line } from "react-chartjs-2";
 import jsPDF from "jspdf";
 import * as XLSX from "xlsx";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Tooltip,
-  Legend
-);
 
 type Transaksi = {
   id: string;
@@ -41,7 +22,6 @@ export default function LaporanPage() {
   useEffect(() => {
     const get = JSON.parse(localStorage.getItem("transaksi") || "[]");
 
-    // FIX DATA LAMA
     const fixed = get.map((d: any, i: number) => ({
       id: d.id || i.toString(),
       nama: d.nama || "-",
@@ -91,26 +71,7 @@ export default function LaporanPage() {
   const total = hasil.reduce((s, d) => s + d.total, 0);
   const formatRp = (n: number) => n.toLocaleString("id-ID");
 
-  /* CHART */
-  const group: Record<string, number> = {};
-  hasil.forEach((d) => {
-    const t = new Date(d.tanggal).toLocaleDateString();
-    group[t] = (group[t] || 0) + d.total;
-  });
-
-  const chartData = {
-    labels: Object.keys(group),
-    datasets: [
-      {
-        label: "Omzet",
-        data: Object.values(group),
-        tension: 0.4,
-        borderWidth: 3,
-      },
-    ],
-  };
-
-  /* PDF dari PREVIEW */
+  /* PDF */
   const exportPDF = () => {
     const pdf = new jsPDF();
     let y = 10;
@@ -209,16 +170,7 @@ export default function LaporanPage() {
         </div>
       </div>
 
-      {/* CHART */}
-      <div className="bg-white shadow rounded p-4 mb-4">
-        {Object.keys(group).length === 0 ? (
-          <p>Tidak ada data</p>
-        ) : (
-          <Line data={chartData} />
-        )}
-      </div>
-
-      {/* PREVIEW CETAK (INI YANG KAMU MAU) */}
+      {/* PREVIEW CETAK */}
       <div ref={printRef} className="bg-white shadow rounded p-6 mt-6">
         <h2 className="text-lg font-bold text-center">AI LAUNDRY</h2>
         <p className="text-center text-sm mb-4">Laporan Keuangan</p>

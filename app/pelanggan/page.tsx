@@ -1,181 +1,223 @@
 "use client";
 import { useEffect, useState } from "react";
 
-type Pelanggan = {
+type Trx = {
   id: string;
   nama: string;
   wa: string;
+  total: number;
+  tanggal?: string;
 };
 
-type Transaksi = {
-  id: string;
+type Pelanggan = {
   nama: string;
-  tanggal: string;
+  wa: string;
   total: number;
 };
 
 export default function PelangganPage() {
-  const [pelanggan, setPelanggan] = useState<Pelanggan[]>([]);
-  const [transaksi, setTransaksi] = useState<Transaksi[]>([]);
-  const [nama, setNama] = useState("");
-  const [wa, setWa] = useState("");
+  const [data, setData] = useState<Pelanggan[]>([]);
+  const [selected, setSelected] = useState<Pelanggan | null>(null);
+  const [riwayat, setRiwayat] = useState<Trx[]>([]);
 
   useEffect(() => {
-    const p = localStorage.getItem("pelanggan");
-    const t = localStorage.getItem("transaksi");
+    const trx: Trx[] = JSON.parse(localStorage.getItem("transaksi") || "[]");
 
-    if (p) setPelanggan(JSON.parse(p));
-    if (t) setTransaksi(JSON.parse(t));
+    const map: { [key: string]: Pelanggan } = {};
+
+    trx.forEach((t) => {
+      if (!map[t.wa]) {
+        map[t.wa] = {
+          nama: t.nama,
+          wa: t.wa,
+          total: 0,
+        };
+      }
+      map[t.wa].total += t.total || 0;
+    });
+
+    const result = Object.values(map).sort((a, b) => b.total - a.total);
+    setData(result);
   }, []);
 
-  const simpan = () => {
-    if (!nama || !wa) return alert("Isi semua data");
+  /* HANDLE KLIK */
+  const handleClick = (p: Pelanggan) => {
+    const trx: Trx[] = JSON.parse(localStorage.getItem("transaksi") || "[]");
 
-    const dataBaru = {
-      id: Date.now().toString(),
-      nama,
-      wa,
-    };
+    const filtered = trx
+      .filter((t) => t.wa === p.wa)
+      .sort((a, b) =>
+        (b.tanggal || "").localeCompare(a.tanggal || "")
+      );
 
-    const updated = [...pelanggan, dataBaru];
-    setPelanggan(updated);
-    localStorage.setItem("pelanggan", JSON.stringify(updated));
-
-    setNama("");
-    setWa("");
+    setSelected(p);
+    setRiwayat(filtered);
   };
 
-  const hapus = (id: string) => {
-    const updated = pelanggan.filter((p) => p.id !== id);
-    setPelanggan(updated);
-    localStorage.setItem("pelanggan", JSON.stringify(updated));
+  /* LEVEL */
+  const getLevel = (total: number) => {
+    if (total >= 1500000) return "Platinum";
+    if (total >= 500000) return "Gold";
+    return "Silver";
   };
 
-  const getRiwayat = (nama: string) => {
-    return transaksi.filter((t) => t.nama === nama);
+  /* PROGRESS */
+  const getProgress = (total: number) => {
+    if (total < 500000) return (total / 500000) * 100;
+    if (total < 1500000) return (total / 1500000) * 100;
+    return 100;
   };
 
-  const kirimWA = (p: Pelanggan) => {
-    const riwayat = getRiwayat(p.nama);
-    const total = riwayat.reduce((s, t) => s + t.total, 0);
-
-    const pesan = `Halo ${p.nama},
-Terima kasih sudah menggunakan jasa laundry kami.
-
-Total transaksi Anda: Rp ${total.toLocaleString("id-ID")}
-Jumlah order: ${riwayat.length}
-
-Kami tunggu kedatangan Anda kembali 🙏`;
-
-    const url = `https://wa.me/${p.wa}?text=${encodeURIComponent(pesan)}`;
-    window.open(url, "_blank");
+  const getNextTarget = (total: number) => {
+    if (total < 500000) return 500000 - total;
+    if (total < 1500000) return 1500000 - total;
+    return 0;
   };
+
+  const getColor = (level: string) => {
+    if (level === "Platinum") return "#8e44ad";
+    if (level === "Gold") return "#f1c40f";
+    return "#bdc3c7";
+  };
+
+  const formatRp = (n: number) => "Rp " + n.toLocaleString("id-ID");
+
+  /* STATISTIK */
+  const totalSemua = data.reduce((a, b) => a + b.total, 0);
+  const jumlahPelanggan = data.length;
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Data Pelanggan</h2>
+    <div style={{ padding: 20 }}>
+      <h2>👥 Data Pelanggan</h2>
 
-      {/* FORM */}
-      <div style={card}>
-        <h3>Tambah Pelanggan</h3>
-        <input
-          placeholder="Nama"
-          value={nama}
-          onChange={(e) => setNama(e.target.value)}
-          style={input}
-        />
-        <input
-          placeholder="No WhatsApp (628xxx)"
-          value={wa}
-          onChange={(e) => setWa(e.target.value)}
-          style={input}
-        />
-        <button onClick={simpan} style={btn}>
-          Simpan
-        </button>
+      {/* STATISTIK */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        <div style={card}>
+          <div>Total Pelanggan</div>
+          <b>{jumlahPelanggan}</b>
+        </div>
+
+        <div style={card}>
+          <div>Total Omzet</div>
+          <b>{formatRp(totalSemua)}</b>
+        </div>
       </div>
 
-      {/* LIST */}
-      <div style={card}>
-        <h3>Daftar Pelanggan</h3>
+      {/* RANKING */}
+      <div>
+        {data.map((p, i) => {
+          const level = getLevel(p.total);
+          const progress = getProgress(p.total);
+          const next = getNextTarget(p.total);
 
-        <table width="100%">
-          <thead>
-            <tr>
-              <th>Nama</th>
-              <th>WA</th>
-              <th>Total Order</th>
-              <th>Total Belanja</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
+          return (
+            <div
+              key={i}
+              style={{ ...rowCard, cursor: "pointer" }}
+              onClick={() => handleClick(p)}
+            >
+              <div style={{ fontWeight: "bold" }}>
+                #{i + 1} {p.nama}
+              </div>
 
-          <tbody>
-            {pelanggan.map((p) => {
-              const riwayat = getRiwayat(p.nama);
-              const total = riwayat.reduce((s, t) => s + t.total, 0);
+              <div style={{ fontSize: 12 }}>{p.wa}</div>
 
-              return (
-                <tr key={p.id}>
-                  <td>{p.nama}</td>
-                  <td>{p.wa}</td>
-                  <td>{riwayat.length}</td>
-                  <td>Rp {total.toLocaleString("id-ID")}</td>
-                  <td>
-                    <button onClick={() => kirimWA(p)} style={btnSmall}>
-                      WA
-                    </button>
-                    <button onClick={() => hapus(p.id)} style={btnDanger}>
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              <div style={{ marginTop: 5 }}>
+                Total: <b>{formatRp(p.total)}</b>
+              </div>
+
+              {/* LEVEL */}
+              <div
+                style={{
+                  marginTop: 5,
+                  display: "inline-block",
+                  padding: "2px 8px",
+                  borderRadius: 10,
+                  background: getColor(level),
+                  color: "#fff",
+                  fontSize: 12,
+                }}
+              >
+                {level}
+              </div>
+
+              {/* PROGRESS */}
+              <div style={{ marginTop: 8 }}>
+                <div
+                  style={{
+                    width: "100%",
+                    height: 6,
+                    background: "#eee",
+                    borderRadius: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${progress}%`,
+                      height: "100%",
+                      background: getColor(level),
+                      borderRadius: 10,
+                    }}
+                  />
+                </div>
+
+                <div style={{ fontSize: 10, marginTop: 3 }}>
+                  {next > 0
+                    ? `Kurang ${formatRp(next)} lagi`
+                    : "Level Maksimal 🎉"}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {/* DETAIL RIWAYAT */}
+      {selected && (
+        <div style={{ marginTop: 30 }}>
+          <h3>📄 Riwayat: {selected.nama}</h3>
+          <div style={{ fontSize: 12, marginBottom: 10 }}>
+            {selected.wa}
+          </div>
+
+          {riwayat.map((t, i) => (
+            <div key={i} style={detailCard}>
+              <div>
+                <b>{formatRp(t.total)}</b>
+              </div>
+              <div style={{ fontSize: 12 }}>
+                {t.tanggal
+                  ? new Date(t.tanggal).toLocaleDateString("id-ID")
+                  : "-"}
+              </div>
+            </div>
+          ))}
+
+          {riwayat.length === 0 && <div>Tidak ada transaksi</div>}
+        </div>
+      )}
     </div>
   );
 }
 
 /* STYLE */
-const card = {
-  background: "white",
-  padding: "15px",
-  borderRadius: "10px",
-  marginTop: "20px",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+const card: React.CSSProperties = {
+  flex: 1,
+  padding: 12,
+  borderRadius: 10,
+  background: "#f1f5f9",
 };
 
-const input = {
-  display: "block",
-  marginBottom: "10px",
-  padding: "8px",
-  width: "100%",
+const rowCard: React.CSSProperties = {
+  padding: 12,
+  borderRadius: 10,
+  border: "1px solid #ddd",
+  marginBottom: 10,
 };
 
-const btn = {
-  padding: "10px",
-  background: "#2ecc71",
-  color: "white",
-  border: "none",
-  borderRadius: "6px",
-};
-
-const btnSmall = {
-  padding: "5px 10px",
-  marginRight: "5px",
-  background: "#3498db",
-  color: "white",
-  border: "none",
-  borderRadius: "5px",
-};
-
-const btnDanger = {
-  padding: "5px 10px",
-  background: "#e74c3c",
-  color: "white",
-  border: "none",
-  borderRadius: "5px",
+const detailCard: React.CSSProperties = {
+  padding: 10,
+  border: "1px solid #eee",
+  borderRadius: 8,
+  marginBottom: 8,
 };
