@@ -72,8 +72,8 @@ export default function NotaClient() {
 
   /* 🔥 LEVEL AUTO (UNTUK DATA LAMA) */
   const getLevel = (total: number) => {
-    if (total >= 1500000) return "Platinum";
-    if (total >= 500000) return "Gold";
+    if (total >= 2000000) return "Platinum";
+    if (total >= 1000000) return "Gold";
     return "Silver";
   };
 
@@ -84,8 +84,8 @@ export default function NotaClient() {
 
   /* 🔥 PROGRESS */
   const getProgress = () => {
-    if (level === "Silver") return Math.min((subtotal / 500000) * 100, 100);
-    if (level === "Gold") return Math.min((subtotal / 1500000) * 100, 100);
+    if (level === "Silver") return Math.min((subtotal / 1000000) * 100, 100);
+    if (level === "Gold") return Math.min((subtotal / 2000000) * 100, 100);
     return 100;
   };
 
@@ -143,10 +143,9 @@ export default function NotaClient() {
 
   Terima kasih 🙏`;
 
-    window.open(
-      `https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`,
-      "_blank"
-    );
+    const url = `intent://send?phone=${nomor}&text=${encodeURIComponent(pesan)}#Intent;scheme=whatsapp;package=com.whatsapp;end`;
+
+    window.location.href = url;
   };
 
   if (loading) return <div className="center">Memuat...</div>;

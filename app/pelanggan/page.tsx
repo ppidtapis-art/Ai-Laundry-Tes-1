@@ -56,21 +56,21 @@ export default function PelangganPage() {
 
   /* LEVEL */
   const getLevel = (total: number) => {
-    if (total >= 1500000) return "Platinum";
-    if (total >= 500000) return "Gold";
+    if (total >= 2000000) return "Platinum";
+    if (total >= 1000000) return "Gold";
     return "Silver";
   };
 
   /* PROGRESS */
   const getProgress = (total: number) => {
-    if (total < 500000) return (total / 500000) * 100;
-    if (total < 1500000) return (total / 1500000) * 100;
+    if (total < 1000000) return (total / 1000000) * 100;
+    if (total < 2000000) return (total / 2000000) * 100;
     return 100;
   };
 
   const getNextTarget = (total: number) => {
-    if (total < 500000) return 500000 - total;
-    if (total < 1500000) return 1500000 - total;
+    if (total < 1000000) return 1000000 - total;
+    if (total < 2000000) return 2000000 - total;
     return 0;
   };
 
@@ -86,9 +86,81 @@ export default function PelangganPage() {
   const totalSemua = data.reduce((a, b) => a + b.total, 0);
   const jumlahPelanggan = data.length;
 
+  /* ===============================
+     🔥 EXPORT JSON
+  =============================== */
+  const exportData = () => {
+    const dataStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "data_pelanggan.json";
+    a.click();
+  };
+
+  /* ===============================
+     🔥 IMPORT JSON
+  =============================== */
+  const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        setData(json);
+        localStorage.setItem("pelanggan_backup", JSON.stringify(json));
+        alert("Import berhasil");
+      } catch {
+        alert("File tidak valid");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  /* ===============================
+     🔥 CETAK
+  =============================== */
+  const cetak = () => {
+    const isi = data
+      .map(
+        (p, i) =>
+          `${i + 1}. ${p.nama}\n${p.wa}\nTotal: ${formatRp(p.total)}\n`
+      )
+      .join("\n");
+
+    const win = window.open("", "", "width=800,height=600");
+    if (!win) return;
+
+    win.document.write(`
+      <html>
+        <head>
+          <title>Data Pelanggan</title>
+        </head>
+        <body>
+          <h2>Data Pelanggan</h2>
+          <pre>${isi}</pre>
+          <script>window.print()</script>
+        </body>
+      </html>
+    `);
+    win.document.close();
+  };
+
   return (
     <div style={{ padding: 20 }}>
       <h2>👥 Data Pelanggan</h2>
+      <div style={{ display: "flex", gap: 10, margin: "10px 0" }}>
+        <button onClick={cetak}>🖨️ Cetak</button>
+        <button onClick={exportData}>⬇️ Export</button>
+        <label style={{ border: "1px solid #ccc", padding: "5px 10px", cursor: "pointer" }}>
+          ⬆️ Import
+          <input type="file" accept="application/json" hidden onChange={importData} />
+        </label>
+      </div>
 
       {/* STATISTIK */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>

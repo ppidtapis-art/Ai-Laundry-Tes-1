@@ -93,7 +93,22 @@ export default function TransaksiPage() {
   /* ===============================
      🔥 HITUNG DISKON REAL-TIME
   =============================== */
-  const member = getLevelMember(subtotal);
+  const [totalBelanjaPelanggan, setTotalBelanjaPelanggan] = useState(0);
+
+  useEffect(() => {
+    if (!wa) return;
+
+    const semuaTrx = JSON.parse(localStorage.getItem("transaksi") || "[]");
+
+    const total = semuaTrx
+      .filter((t: any) => t.wa === normalizeWA(wa))
+      .reduce((s: number, t: any) => s + t.total, 0);
+
+    setTotalBelanjaPelanggan(total);
+  }, [wa]);
+  const totalGabungan = totalBelanjaPelanggan + subtotal;
+  const member = getLevelMember(totalGabungan);
+
   const persenDiskon = getDiskon(member.level);
   const potongan = subtotal * persenDiskon;
   const totalAkhir = subtotal - potongan;
@@ -157,7 +172,7 @@ export default function TransaksiPage() {
   };
 
   return (
-    <div className="p-4 max-w-3xl mx-auto space-y-4">
+    <div className="p-4 w-full md:max-w-3xl mx-auto space-y-4">
 
       {/* PELANGGAN */}
       <div className="bg-white p-4 rounded shadow">

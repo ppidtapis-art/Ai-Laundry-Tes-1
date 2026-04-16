@@ -96,6 +96,59 @@ export default function RiwayatPage() {
       x.nomor.toLowerCase().includes(search.toLowerCase())
     );
 
+  const cetak = () => {
+    const isi = filtered.map(x => `
+      <tr>
+        <td>${x.nomor}</td>
+        <td>${x.nama}</td>
+        <td>${x.status}</td>
+        <td>${formatTanggal(x.tanggal)}</td>
+        <td>${x.tanggalSelesai}</td>
+        <td>${formatRp(x.total)}</td>
+      </tr>
+    `).join("");
+
+    const html = `
+      <html>
+        <head>
+          <title>Cetak Laporan</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h2 { margin-bottom: 10px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+            th { background: #eee; }
+          </style>
+        </head>
+        <body>
+          <h2>Laporan Transaksi</h2>
+          <div>Filter: ${filter} | Cari: ${search || "-"}</div>
+          <br/>
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Nama</th>
+                <th>Status</th>
+                <th>Masuk</th>
+                <th>Selesai</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${isi}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    const win = window.open("", "", "width=800,height=600");
+    win?.document.write(html);
+    win?.document.close();
+    win?.print();
+  };
+
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto bg-gray-100 min-h-screen">
       <div className="max-w-5xl mx-auto space-y-4">
@@ -118,6 +171,13 @@ export default function RiwayatPage() {
             <option>Proses</option>
             <option>Selesai</option>
           </select>
+
+          <button
+            onClick={cetak}
+            className="bg-blue-600 text-white p-2 rounded"
+          >
+            Cetak
+          </button>
         </div>
 
         {/* LIST */}
