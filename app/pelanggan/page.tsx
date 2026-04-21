@@ -6,13 +6,20 @@ type Trx = {
   nama: string;
   wa: string;
   total: number;
+  subtotal?: number;
   tanggal?: string;
+  items?: any[];
 };
 
 type Pelanggan = {
   nama: string;
   wa: string;
   total: number;
+
+  // 🔥 BONUS SYSTEM
+  totalBerat: number;
+  bonusCount: number;
+  siapBonus: boolean;
 };
 
 export default function PelangganPage() {
@@ -31,16 +38,37 @@ export default function PelangganPage() {
           nama: t.nama,
           wa: t.wa,
           total: 0,
+          totalBerat: 0,
+          bonusCount: 0,
+          siapBonus: false,
         };
       }
-      map[t.wa].total += t.total || 0;
+
+      map[t.wa].total += t.subtotal || t.total || 0;
+
+      // 🔥 hitung berat
+      if (t.items) {
+        t.items.forEach((item: any) => {
+          if (item.tipe === "kg") {
+            map[t.wa].totalBerat += item.berat || 0;
+          }
+        });
+      }
+    });
+
+    Object.values(map).forEach((p) => {
+      // 🔥 hanya 3x bonus
+      if (p.bonusCount < 3 && p.totalBerat >= 30) {
+        p.siapBonus = true;
+      } else {
+        p.siapBonus = false;
+      }
     });
 
     const result = Object.values(map).sort((a, b) => b.total - a.total);
     setData(result);
   }, []);
 
-  /* HANDLE KLIK */
   const handleClick = (p: Pelanggan) => {
     const trx: Trx[] = JSON.parse(localStorage.getItem("transaksi") || "[]");
 
@@ -61,7 +89,6 @@ export default function PelangganPage() {
     return "Silver";
   };
 
-  /* PROGRESS */
   const getProgress = (total: number) => {
     if (total < 1000000) return (total / 1000000) * 100;
     if (total < 2000000) return (total / 2000000) * 100;
@@ -82,85 +109,29 @@ export default function PelangganPage() {
 
   const formatRp = (n: number) => "Rp " + n.toLocaleString("id-ID");
 
-  /* STATISTIK */
   const totalSemua = data.reduce((a, b) => a + b.total, 0);
   const jumlahPelanggan = data.length;
 
-  /* ===============================
-     🔥 EXPORT JSON
-  =============================== */
-  const exportData = () => {
-    const dataStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+  const hapusRiwayat = (wa: string) => {
+    const trx: Trx[] = JSON.parse(localStorage.getItem("transaksi") || "[]");
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "data_pelanggan.json";
-    a.click();
-  };
+    // hapus semua transaksi pelanggan ini
+    const filtered = trx.filter((t) => t.wa !== wa);
 
-  /* ===============================
-     🔥 IMPORT JSON
-  =============================== */
-  const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    localStorage.setItem("transaksi", JSON.stringify(filtered));
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        setData(json);
-        localStorage.setItem("pelanggan_backup", JSON.stringify(json));
-        alert("Import berhasil");
-      } catch {
-        alert("File tidak valid");
-      }
-    };
-    reader.readAsText(file);
-  };
+    // 🔥 hapus juga dari pelanggan
+    const pelanggan = JSON.parse(localStorage.getItem("pelanggan") || "[]");
+    const filteredPelanggan = pelanggan.filter((p: any) => p.wa !== wa);
+    localStorage.setItem("pelanggan", JSON.stringify(filteredPelanggan));
 
-  /* ===============================
-     🔥 CETAK
-  =============================== */
-  const cetak = () => {
-    const isi = data
-      .map(
-        (p, i) =>
-          `${i + 1}. ${p.nama}\n${p.wa}\nTotal: ${formatRp(p.total)}\n`
-      )
-      .join("\n");
-
-    const win = window.open("", "", "width=800,height=600");
-    if (!win) return;
-
-    win.document.write(`
-      <html>
-        <head>
-          <title>Data Pelanggan</title>
-        </head>
-        <body>
-          <h2>Data Pelanggan</h2>
-          <pre>${isi}</pre>
-          <script>window.print()</script>
-        </body>
-      </html>
-    `);
-    win.document.close();
+    // refresh data
+    window.location.reload();
   };
 
   return (
     <div style={{ padding: 20 }}>
       <h2>👥 Data Pelanggan</h2>
-      <div style={{ display: "flex", gap: 10, margin: "10px 0" }}>
-        <button onClick={cetak}>🖨️ Cetak</button>
-        <button onClick={exportData}>⬇️ Export</button>
-        <label style={{ border: "1px solid #ccc", padding: "5px 10px", cursor: "pointer" }}>
-          ⬆️ Import
-          <input type="file" accept="application/json" hidden onChange={importData} />
-        </label>
-      </div>
 
       {/* STATISTIK */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
@@ -175,97 +146,101 @@ export default function PelangganPage() {
         </div>
       </div>
 
-      {/* RANKING */}
-      <div>
-        {data.map((p, i) => {
-          const level = getLevel(p.total);
-          const progress = getProgress(p.total);
-          const next = getNextTarget(p.total);
+      {/* LIST */}
+      {data.map((p, i) => {
+        const level = getLevel(p.total);
+        const progress = getProgress(p.total);
+        const next = getNextTarget(p.total);
 
-          return (
-            <div
-              key={i}
-              style={{ ...rowCard, cursor: "pointer" }}
-              onClick={() => handleClick(p)}
-            >
-              <div style={{ fontWeight: "bold" }}>
-                #{i + 1} {p.nama}
-              </div>
+        return (
+          <div
+            key={i}
+            style={{ ...rowCard, cursor: "pointer" }}
+            onClick={() => handleClick(p)}
+          >
+            <b>#{i + 1} {p.nama}</b>
+            <div style={{ fontSize: 12 }}>{p.wa}</div>
 
-              <div style={{ fontSize: 12 }}>{p.wa}</div>
+            <div>Total: <b>{formatRp(p.total)}</b></div>
 
-              <div style={{ marginTop: 5 }}>
-                Total: <b>{formatRp(p.total)}</b>
-              </div>
+            {/* BONUS INFO */}
+            <div style={{ fontSize: 12, marginTop: 5 }}>
+              Berat: {p.totalBerat.toFixed(1)} kg
+            </div>
 
-              {/* LEVEL */}
-              <div
-                style={{
-                  marginTop: 5,
-                  display: "inline-block",
-                  padding: "2px 8px",
-                  borderRadius: 10,
-                  background: getColor(level),
-                  color: "#fff",
-                  fontSize: 12,
-                }}
-              >
-                {level}
-              </div>
+            <div style={{ fontSize: 12 }}>
+              Bonus dipakai: {p.bonusCount} / 3
+            </div>
 
-              {/* PROGRESS */}
-              <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: p.siapBonus ? "green" : "gray" }}>
+              {p.siapBonus ? "🎁 Bonus 2.5kg siap dipakai" : "Belum mencapai bonus"}
+            </div>
+
+            {/* LEVEL */}
+            <div style={{
+              marginTop: 5,
+              padding: "2px 8px",
+              borderRadius: 10,
+              background: getColor(level),
+              color: "#fff",
+              fontSize: 12,
+              display: "inline-block"
+            }}>
+              {level}
+            </div>
+
+            {/* PROGRESS */}
+            <div style={{ marginTop: 8 }}>
+              <div style={{ width: "100%", height: 6, background: "#eee", borderRadius: 10 }}>
                 <div
                   style={{
-                    width: "100%",
-                    height: 6,
-                    background: "#eee",
+                    width: `${progress}%`,
+                    height: "100%",
+                    background: getColor(level),
                     borderRadius: 10,
                   }}
-                >
-                  <div
-                    style={{
-                      width: `${progress}%`,
-                      height: "100%",
-                      background: getColor(level),
-                      borderRadius: 10,
-                    }}
-                  />
-                </div>
+                />
+              </div>
 
-                <div style={{ fontSize: 10, marginTop: 3 }}>
-                  {next > 0
-                    ? `Kurang ${formatRp(next)} lagi`
-                    : "Level Maksimal 🎉"}
-                </div>
+              <div style={{ fontSize: 10 }}>
+                {next > 0 ? `Kurang ${formatRp(next)} lagi` : "Level Maksimal 🎉"}
               </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
 
-      {/* DETAIL RIWAYAT */}
+      {/* RIWAYAT */}
       {selected && (
         <div style={{ marginTop: 30 }}>
           <h3>📄 Riwayat: {selected.nama}</h3>
-          <div style={{ fontSize: 12, marginBottom: 10 }}>
-            {selected.wa}
-          </div>
+          <button
+            onClick={() => {
+              if (confirm("Yakin hapus semua riwayat pelanggan ini?")) {
+                hapusRiwayat(selected.wa);
+              }
+            }}
+            style={{
+              background: "red",
+              color: "#fff",
+              padding: "6px 12px",
+              border: "none",
+              borderRadius: 6,
+              marginBottom: 10,
+              cursor: "pointer"
+            }}
+          >
+            🗑️ Hapus Riwayat
+          </button>
 
           {riwayat.map((t, i) => (
             <div key={i} style={detailCard}>
-              <div>
-                <b>{formatRp(t.total)}</b>
-              </div>
+              <b>{formatRp(t.total)}</b>
               <div style={{ fontSize: 12 }}>
-                {t.tanggal
-                  ? new Date(t.tanggal).toLocaleDateString("id-ID")
-                  : "-"}
+                {t.tanggal ? new Date(t.tanggal).toLocaleDateString("id-ID") : "-"}
               </div>
             </div>
           ))}
-
-          {riwayat.length === 0 && <div>Tidak ada transaksi</div>}
         </div>
       )}
     </div>

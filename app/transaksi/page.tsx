@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { rewardEngine } from "@/lib/rewardEngine";
 
 type TipeHarga = "kg" | "item";
 
@@ -46,7 +47,20 @@ export default function TransaksiPage() {
 
   useEffect(() => {
     setLayanan(JSON.parse(localStorage.getItem("layanan") || "[]"));
-    setPelangganList(JSON.parse(localStorage.getItem("pelanggan") || "[]"));
+
+    const trx = JSON.parse(localStorage.getItem("transaksi") || "[]");
+
+    const unik = Array.from(
+      new Map(trx.map((t: any) => [t.wa, t])).values()
+    );
+
+    setPelangganList(
+      unik.map((t: any) => ({
+        id: t.id,
+        nama: t.nama,
+        wa: t.wa,
+      }))
+    );
   }, []);
 
   const normalizeWA = (n: string) => {
@@ -88,6 +102,7 @@ export default function TransaksiPage() {
   const getSubTotalItem = (x: Selected) =>
     x.tipe === "kg" ? x.harga * (x.berat || 0) : x.harga * x.qty;
 
+  // 1. subtotal awal (lama)
   const subtotal = selected.reduce((s, x) => s + getSubTotalItem(x), 0);
 
   /* ===============================
@@ -102,16 +117,12 @@ export default function TransaksiPage() {
 
     const total = semuaTrx
       .filter((t: any) => t.wa === normalizeWA(wa))
-      .reduce((s: number, t: any) => s + t.total, 0);
+      .reduce((s: number, t: any) => s + (t.subtotal || t.total), 0);
 
     setTotalBelanjaPelanggan(total);
   }, [wa]);
   const totalGabungan = totalBelanjaPelanggan + subtotal;
   const member = getLevelMember(totalGabungan);
-
-  const persenDiskon = getDiskon(member.level);
-  const potongan = subtotal * persenDiskon;
-  const totalAkhir = subtotal - potongan;
 
   const getEstimasi = () => {
     if (!selected.length) return "-";
@@ -120,6 +131,52 @@ export default function TransaksiPage() {
     tgl.setDate(tgl.getDate() + max);
     return tgl.toLocaleDateString("id-ID");
   };
+
+  // 2. total KG
+  const totalKg = selected
+    .filter((x) => x.tipe === "kg")
+    .reduce((s, x) => s + (x.berat || 0), 0);
+
+  // 3. reward
+  const reward = rewardEngine({
+    wa: normalizeWA(wa),
+    total: subtotal,
+    totalKg,
+  }) || {
+    diskonRp: 0,
+    bonusKg: 0,
+    level: "Silver",
+  };
+
+  // 4. harga KG total
+  const totalHargaKg = selected
+      .filter((x) => x.tipe === "kg")
+      .reduce((s, x) => s + x.harga * (x.berat || 0), 0);
+
+  // 5. harga item
+  const totalHargaItem = selected
+      .filter((x) => x.tipe !== "kg")
+      .reduce((s, x) => s + x.harga * x.qty, 0);
+
+  // 6. kg setelah bonus
+  const kgSetelahBonus = Math.max(0, totalKg - (reward?.bonusKg || 0));
+
+  // 7. harga per kg
+  const hargaPerKg = totalKg > 0 ? totalHargaKg / totalKg : 0;
+
+  // 8. harga kg setelah bonus
+  const hargaKgSetelahBonus = kgSetelahBonus * hargaPerKg;
+
+  // 9. subtotal FINAL (baru di sini!)
+  const subtotalFinal = hargaKgSetelahBonus + totalHargaItem;
+
+  // 10. diskon member
+  const persenDiskon = getDiskon(member.level);
+  const potongan = subtotalFinal * persenDiskon;
+
+  // 11. total akhir
+  const totalAkhir =
+      subtotalFinal - potongan - (reward?.diskonRp || 0);
 
   const formatRp = (n: number) => "Rp " + n.toLocaleString("id-ID");
 
@@ -155,9 +212,9 @@ export default function TransaksiPage() {
       wa: norm,
       items: selected,
 
-      subtotal,
-      diskon: potongan,
-      level: member.level,
+      subtotal: subtotalFinal,
+      bonusKg: reward?.bonusKg || 0,
+      diskonReward: reward?.diskonRp || 0,
       total: totalAkhir,
 
       status: "Proses",
