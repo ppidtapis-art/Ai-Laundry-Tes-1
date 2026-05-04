@@ -40,7 +40,7 @@ const saveDB = (db: any) => {
 /* =========================
    LEVEL
 ========================= */
-const getLevel = (total: number) => {
+const getLevel = (total: number): "Silver" | "Gold" | "Platinum" => {
   if (total >= 2000000) return "Platinum";
   if (total >= 1000000) return "Gold";
   return "Silver";

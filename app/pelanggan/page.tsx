@@ -1,6 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 
+type Item = {
+  nama: string;
+  harga: number;
+  tipe: "kg" | "item";
+  qty: number;
+  berat?: number;
+};
+
 type Trx = {
   id: string;
   nama: string;
@@ -8,6 +16,9 @@ type Trx = {
   total: number;
   subtotal?: number;
   tanggal?: string;
+
+  // 🔥 TAMBAHKAN INI
+  items?: Item[];
 };
 
 type RewardDB = {
