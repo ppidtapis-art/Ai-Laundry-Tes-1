@@ -8,7 +8,14 @@ type Trx = {
   total: number;
   subtotal?: number;
   tanggal?: string;
-  items?: any[];
+};
+
+type RewardDB = {
+  [wa: string]: {
+    totalBelanja: number;
+    totalKg: number;
+    bonusUsed: boolean;
+  };
 };
 
 type Pelanggan = {
@@ -16,9 +23,8 @@ type Pelanggan = {
   wa: string;
   total: number;
 
-  // 🔥 BONUS SYSTEM
   totalBerat: number;
-  bonusCount: number;
+  bonusUsed: boolean;
   siapBonus: boolean;
 };
 
@@ -29,6 +35,7 @@ export default function PelangganPage() {
 
   useEffect(() => {
     const trx: Trx[] = JSON.parse(localStorage.getItem("transaksi") || "[]");
+    const rewardDB = JSON.parse(localStorage.getItem("reward_db") || "{}");
 
     const map: { [key: string]: Pelanggan } = {};
 
@@ -39,33 +46,29 @@ export default function PelangganPage() {
           wa: t.wa,
           total: 0,
           totalBerat: 0,
-          bonusCount: 0,
+          bonusUsed: rewardDB[t.wa]?.bonus30kgUsed || false,
           siapBonus: false,
         };
       }
 
-      map[t.wa].total += t.subtotal || t.total || 0;
+      // 🔥 TOTAL BELANJA DARI TRANSAKSI
+      map[t.wa].total += t.total || 0;
 
-      // 🔥 hitung berat
-      if (t.items) {
-        t.items.forEach((item: any) => {
-          if (item.tipe === "kg") {
-            map[t.wa].totalBerat += item.berat || 0;
-          }
-        });
-      }
+      // 🔥 TOTAL BERAT DARI ITEMS
+      const berat = (t.items || [])
+        .filter((i: any) => i.tipe === "kg")
+        .reduce((s: number, i: any) => s + (i.berat || 0), 0);
+
+      map[t.wa].totalBerat += berat;
     });
 
+    // 🔥 STATUS BONUS
     Object.values(map).forEach((p) => {
-      // 🔥 hanya 3x bonus
-      if (p.bonusCount < 3 && p.totalBerat >= 30) {
-        p.siapBonus = true;
-      } else {
-        p.siapBonus = false;
-      }
+      p.siapBonus = !p.bonusUsed && p.totalBerat >= 30;
     });
 
     const result = Object.values(map).sort((a, b) => b.total - a.total);
+
     setData(result);
   }, []);
 
@@ -115,17 +118,19 @@ export default function PelangganPage() {
   const hapusRiwayat = (wa: string) => {
     const trx: Trx[] = JSON.parse(localStorage.getItem("transaksi") || "[]");
 
-    // hapus semua transaksi pelanggan ini
     const filtered = trx.filter((t) => t.wa !== wa);
-
     localStorage.setItem("transaksi", JSON.stringify(filtered));
 
-    // 🔥 hapus juga dari pelanggan
+    // 🔥 hapus reward juga
+    const rewardDB = JSON.parse(localStorage.getItem("reward_db") || "{}");
+    delete rewardDB[wa];
+    localStorage.setItem("reward_db", JSON.stringify(rewardDB));
+
+    // 🔥 hapus pelanggan
     const pelanggan = JSON.parse(localStorage.getItem("pelanggan") || "[]");
     const filteredPelanggan = pelanggan.filter((p: any) => p.wa !== wa);
     localStorage.setItem("pelanggan", JSON.stringify(filteredPelanggan));
 
-    // refresh data
     window.location.reload();
   };
 
@@ -133,7 +138,7 @@ export default function PelangganPage() {
     <div style={{ padding: 20 }}>
       <h2>👥 Data Pelanggan</h2>
 
-      {/* STATISTIK */}
+      {/* STAT */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         <div style={card}>
           <div>Total Pelanggan</div>
@@ -163,17 +168,19 @@ export default function PelangganPage() {
 
             <div>Total: <b>{formatRp(p.total)}</b></div>
 
-            {/* BONUS INFO */}
+            {/* BONUS */}
             <div style={{ fontSize: 12, marginTop: 5 }}>
               Berat: {p.totalBerat.toFixed(1)} kg
             </div>
 
             <div style={{ fontSize: 12 }}>
-              Bonus dipakai: {p.bonusCount} / 3
+              Status Bonus: {p.bonusUsed ? "Sudah dipakai" : "Belum"}
             </div>
 
             <div style={{ fontSize: 12, color: p.siapBonus ? "green" : "gray" }}>
-              {p.siapBonus ? "🎁 Bonus 2.5kg siap dipakai" : "Belum mencapai bonus"}
+              {p.siapBonus
+                ? "🎁 Bonus 2.5kg siap dipakai"
+                : "Belum mencapai bonus"}
             </div>
 
             {/* LEVEL */}
@@ -214,6 +221,7 @@ export default function PelangganPage() {
       {selected && (
         <div style={{ marginTop: 30 }}>
           <h3>📄 Riwayat: {selected.nama}</h3>
+
           <button
             onClick={() => {
               if (confirm("Yakin hapus semua riwayat pelanggan ini?")) {
@@ -237,7 +245,9 @@ export default function PelangganPage() {
             <div key={i} style={detailCard}>
               <b>{formatRp(t.total)}</b>
               <div style={{ fontSize: 12 }}>
-                {t.tanggal ? new Date(t.tanggal).toLocaleDateString("id-ID") : "-"}
+                {t.tanggal
+                  ? new Date(t.tanggal).toLocaleDateString("id-ID")
+                  : "-"}
               </div>
             </div>
           ))}

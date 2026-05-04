@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { rewardEngine } from "@/lib/rewardEngine";
+import { applyReward, getRewardInfo, simulateReward } from "@/lib/rewardEngine";
 
 type TipeHarga = "kg" | "item";
 
 type Layanan = {
-  id: number;
+  id: string;
   nama: string;
   harga: number;
   tipe: TipeHarga;
@@ -18,13 +18,13 @@ type Selected = Layanan & {
 };
 
 type Pelanggan = {
-  id: number;
+  id: string;
   nama: string;
   wa: string;
 };
 
 /* ===============================
-   🔥 MEMBER + DISKON
+   MEMBER
 =============================== */
 const getLevelMember = (total: number) => {
   if (total >= 1500000) return { level: "Platinum", color: "#8e44ad" };
@@ -45,6 +45,13 @@ export default function TransaksiPage() {
   const [nama, setNama] = useState("");
   const [wa, setWa] = useState("");
 
+  // 🔥 hanya untuk info, bukan untuk hitung transaksi
+  const [rewardInfo, setRewardInfo] = useState({
+    totalKg: 0,
+    bonus30kgUsed: false,
+    level: "Silver" as "Silver" | "Gold" | "Platinum",
+  });
+
   useEffect(() => {
     setLayanan(JSON.parse(localStorage.getItem("layanan") || "[]"));
 
@@ -63,6 +70,9 @@ export default function TransaksiPage() {
     );
   }, []);
 
+  /* ===============================
+     NORMALIZE WA
+  =============================== */
   const normalizeWA = (n: string) => {
     const clean = n.replace(/[^0-9]/g, "");
     if (clean.startsWith("62")) return clean;
@@ -70,13 +80,27 @@ export default function TransaksiPage() {
     return clean;
   };
 
-  const pilihPelanggan = (id: number) => {
+  const pilihPelanggan = (id: string) => {
     const p = pelangganList.find((x) => x.id === id);
     if (!p) return;
+
     setNama(p.nama);
     setWa(p.wa);
   };
 
+  /* ===============================
+     LOAD INFO (READ ONLY)
+  =============================== */
+  useEffect(() => {
+    if (!wa) return;
+
+    const r = getRewardInfo(normalizeWA(wa));
+    setRewardInfo(r);
+  }, [wa]);
+
+  /* ===============================
+     LAYANAN
+  =============================== */
   const toggleLayanan = (l: Layanan) => {
     const exist = selected.find((x) => x.id === l.id);
     if (exist) {
@@ -89,11 +113,11 @@ export default function TransaksiPage() {
     }
   };
 
-  const updateQty = (id: number, val: number) => {
+  const updateQty = (id: string, val: number) => {
     setSelected(selected.map((x) => (x.id === id ? { ...x, qty: val } : x)));
   };
 
-  const updateBerat = (id: number, val: number) => {
+  const updateBerat = (id: string, val: number) => {
     setSelected(selected.map((x) =>
       x.id === id ? { ...x, berat: val } : x
     ));
@@ -102,108 +126,72 @@ export default function TransaksiPage() {
   const getSubTotalItem = (x: Selected) =>
     x.tipe === "kg" ? x.harga * (x.berat || 0) : x.harga * x.qty;
 
-  // 1. subtotal awal (lama)
   const subtotal = selected.reduce((s, x) => s + getSubTotalItem(x), 0);
 
   /* ===============================
-     🔥 HITUNG DISKON REAL-TIME
+     TOTAL KG
   =============================== */
-  const [totalBelanjaPelanggan, setTotalBelanjaPelanggan] = useState(0);
-
-  useEffect(() => {
-    if (!wa) return;
-
-    const semuaTrx = JSON.parse(localStorage.getItem("transaksi") || "[]");
-
-    const total = semuaTrx
-      .filter((t: any) => t.wa === normalizeWA(wa))
-      .reduce((s: number, t: any) => s + (t.subtotal || t.total), 0);
-
-    setTotalBelanjaPelanggan(total);
-  }, [wa]);
-  const totalGabungan = totalBelanjaPelanggan + subtotal;
-  const member = getLevelMember(totalGabungan);
-
-  const getEstimasi = () => {
-    if (!selected.length) return "-";
-    const max = Math.max(...selected.map((x) => x.estimasiHari));
-    const tgl = new Date();
-    tgl.setDate(tgl.getDate() + max);
-    return tgl.toLocaleDateString("id-ID");
-  };
-
-  // 2. total KG
   const totalKg = selected
     .filter((x) => x.tipe === "kg")
     .reduce((s, x) => s + (x.berat || 0), 0);
 
-  // 3. reward
-  const reward = rewardEngine({
-    wa: normalizeWA(wa),
-    total: subtotal,
-    totalKg,
-  }) || {
-    diskonRp: 0,
-    bonusKg: 0,
-    level: "Silver",
-  };
-
-  // 4. harga KG total
+  /* ===============================
+     HARGA FINAL (BELUM BONUS)
+  =============================== */
   const totalHargaKg = selected
-      .filter((x) => x.tipe === "kg")
-      .reduce((s, x) => s + x.harga * (x.berat || 0), 0);
+    .filter((x) => x.tipe === "kg")
+    .reduce((s, x) => s + x.harga * (x.berat || 0), 0);
 
-  // 5. harga item
   const totalHargaItem = selected
-      .filter((x) => x.tipe !== "kg")
-      .reduce((s, x) => s + x.harga * x.qty, 0);
+    .filter((x) => x.tipe !== "kg")
+    .reduce((s, x) => s + x.harga * x.qty, 0);
 
-  // 6. kg setelah bonus
-  const kgSetelahBonus = Math.max(0, totalKg - (reward?.bonusKg || 0));
-
-  // 7. harga per kg
   const hargaPerKg = totalKg > 0 ? totalHargaKg / totalKg : 0;
 
-  // 8. harga kg setelah bonus
-  const hargaKgSetelahBonus = kgSetelahBonus * hargaPerKg;
-
-  // 9. subtotal FINAL (baru di sini!)
-  const subtotalFinal = hargaKgSetelahBonus + totalHargaItem;
-
-  // 10. diskon member
-  const persenDiskon = getDiskon(member.level);
-  const potongan = subtotalFinal * persenDiskon;
-
-  // 11. total akhir
-  const totalAkhir =
-      subtotalFinal - potongan - (reward?.diskonRp || 0);
-
-  const formatRp = (n: number) => "Rp " + n.toLocaleString("id-ID");
-
   /* ===============================
-     🔥 SIMPAN
+     SIMPAN (APPLY REWARD)
   =============================== */
   const simpanDanKeNota = () => {
     if (!nama || !wa || !selected.length) return alert("Lengkapi data");
 
-    const trxId = Date.now();
+    const trxId = Date.now().toString();
     const norm = normalizeWA(wa);
 
-    let pelangganLama: Pelanggan[] = JSON.parse(
-      localStorage.getItem("pelanggan") || "[]"
-    );
+    // 🔥 APPLY REWARD
+    const reward = applyReward({
+      id: trxId,
+      wa: norm,
+      total: subtotal,
+      totalKg,
+    });
 
-    const idx = pelangganLama.findIndex((p) => p.wa === norm);
+    // 🔥 SIMPAN KE DATABASE PELANGGAN (INI YANG KURANG)
+    const pelangganDB = JSON.parse(localStorage.getItem("pelanggan") || "[]");
 
-    if (idx !== -1) pelangganLama[idx].nama = nama;
-    else
-      pelangganLama.unshift({
-        id: Date.now(),
+    const exist = pelangganDB.find((p: any) => p.wa === norm);
+
+    if (!exist) {
+      pelangganDB.push({
+        id: trxId,
         nama,
         wa: norm,
       });
+    }
 
-    localStorage.setItem("pelanggan", JSON.stringify(pelangganLama));
+    localStorage.setItem("pelanggan", JSON.stringify(pelangganDB));
+
+    // ==============================
+    // LANJUT KODE KAMU
+    // ==============================
+    const kgSetelahBonus = Math.max(0, totalKg - reward.bonusKg);
+
+    const subtotalFinal =
+      (kgSetelahBonus * hargaPerKg) + totalHargaItem;
+
+    const member = getLevelMember(subtotalFinal);
+    const potongan = subtotalFinal * getDiskon(member.level);
+
+    const totalAkhir = subtotalFinal - potongan;
 
     const trx = {
       id: trxId,
@@ -211,15 +199,12 @@ export default function TransaksiPage() {
       nama,
       wa: norm,
       items: selected,
-
       subtotal: subtotalFinal,
-      bonusKg: reward?.bonusKg || 0,
-      diskonReward: reward?.diskonRp || 0,
+      bonusKg: reward.bonusKg,
+      level: member.level,
       total: totalAkhir,
-
       status: "Proses",
       tanggal: new Date().toISOString(),
-      tanggalSelesai: getEstimasi(),
     };
 
     const lama = JSON.parse(localStorage.getItem("transaksi") || "[]");
@@ -228,12 +213,24 @@ export default function TransaksiPage() {
     window.location.href = `/nota?id=${trxId}`;
   };
 
-  return (
-    <div className="p-4 w-full md:max-w-3xl mx-auto space-y-4">
+  const [simulasi, setSimulasi] = useState({
+    bonusKg: 0,
+    akanDapatBonus: false,
+    sisaMenujuBonus: 30,
+  });
 
-      {/* PELANGGAN */}
+  const formatRp = (n: number) => "Rp " + n.toLocaleString("id-ID");
+
+  return (
+    <div className="p-4 max-w-3xl mx-auto space-y-4">
+
       <div className="bg-white p-4 rounded shadow">
-        <select onChange={(e) => pilihPelanggan(Number(e.target.value))} className="border p-2 w-full">
+
+        {/* PILIH PELANGGAN */}
+        <select
+          onChange={(e) => pilihPelanggan(e.target.value)}
+          className="border p-2 w-full mb-2"
+        >
           <option value="">Pilih Pelanggan</option>
           {pelangganList.map((p) => (
             <option key={p.id} value={p.id}>
@@ -242,11 +239,21 @@ export default function TransaksiPage() {
           ))}
         </select>
 
-        <input className="border p-2 w-full mt-2" placeholder="Nama" value={nama} onChange={(e) => setNama(e.target.value)} />
-        <input className="border p-2 w-full mt-2" placeholder="WA" value={wa} onChange={(e) => setWa(e.target.value)} />
+        <input
+          className="border p-2 w-full mt-2"
+          placeholder="Nama"
+          value={nama}
+          onChange={(e) => setNama(e.target.value)}
+        />
+
+        <input
+          className="border p-2 w-full mt-2"
+          placeholder="WA"
+          value={wa}
+          onChange={(e) => setWa(e.target.value)}
+        />
       </div>
 
-      {/* LAYANAN */}
       <div className="bg-white p-4 rounded shadow">
         {layanan.map((l) => {
           const s = selected.find((x) => x.id === l.id);
@@ -269,35 +276,40 @@ export default function TransaksiPage() {
         })}
       </div>
 
-      {/* TOTAL */}
       <div className="bg-white p-4 rounded shadow">
         <div>Subtotal: {formatRp(subtotal)}</div>
 
-        <div>
-          Member:
-          <span style={{
-            marginLeft: 6,
-            padding: "3px 8px",
-            borderRadius: 10,
-            background: member.color,
-            color: "#fff",
-            fontSize: 12
-          }}>
-            {member.level}
-          </span>
+        {/* INFO BONUS */}
+        <div style={{ fontSize: 12, marginTop: 5 }}>
+          Total Kg Customer: {rewardInfo.totalKg.toFixed(1)} kg
         </div>
 
-        {potongan > 0 && (
-          <div style={{ color: "green" }}>
-            Diskon: -{formatRp(potongan)}
+        {/* BONUS SIAP */}
+        {simulasi.bonusKg > 0 && (
+          <div style={{ color: "green", marginTop: 5 }}>
+            🎁 Bonus akan dipakai: {simulasi.bonusKg} Kg
           </div>
         )}
 
-        <hr />
+        {/* MENUJU BONUS */}
+        {simulasi.bonusKg === 0 && (
+          <div style={{ color: "#555", marginTop: 5 }}>
+            Kurang {simulasi.sisaMenujuBonus.toFixed(1)} kg lagi untuk bonus
+          </div>
+        )}
 
-        <div className="text-lg font-bold">
-          Total Bayar: {formatRp(totalAkhir)}
+      {/* AKAN DAPAT BONUS */}
+      {simulasi.akanDapatBonus && (
+        <div style={{ color: "orange", marginTop: 5 }}>
+          ⚡ Transaksi ini akan memicu bonus!
         </div>
+      )}
+
+        {!rewardInfo.bonus30kgUsed && rewardInfo.totalKg >= 30 && (
+          <div style={{ color: "green" }}>
+            🎁 Bonus siap dipakai
+          </div>
+        )}
 
         <button onClick={simpanDanKeNota} className="w-full bg-green-600 text-white p-3 mt-3 rounded">
           Simpan & Nota

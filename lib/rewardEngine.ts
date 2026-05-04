@@ -1,24 +1,28 @@
 type Transaction = {
+  id: string;
   wa: string;
   total: number;
   totalKg: number;
 };
 
-type RewardState = {
-  bonusCount: number;
+type UserState = {
+  totalKg: number;
+  totalBelanja: number;
+  bonus30kgUsed: boolean;
+  processedIds: string[];
 };
 
 type RewardResult = {
   bonusKg: number;
   diskonRp: number;
   level: "Silver" | "Gold" | "Platinum";
-  updatedState: RewardState;
+  user: UserState;
 };
 
 /* =========================
-   STORAGE HELPER
+   STORAGE
 ========================= */
-const getDB = () => {
+const getDB = (): Record<string, UserState> => {
   if (typeof window === "undefined") return {};
 
   try {
@@ -30,12 +34,11 @@ const getDB = () => {
 
 const saveDB = (db: any) => {
   if (typeof window === "undefined") return;
-
   localStorage.setItem("reward_db", JSON.stringify(db));
 };
 
 /* =========================
-   LEVEL SYSTEM
+   LEVEL
 ========================= */
 const getLevel = (total: number) => {
   if (total >= 2000000) return "Platinum";
@@ -44,46 +47,117 @@ const getLevel = (total: number) => {
 };
 
 /* =========================
-   REWARD ENGINE
+   NORMALIZE USER
 ========================= */
-export const rewardEngine = (trx: Transaction): RewardResult => {
-  const db = getDB();
+const normalizeUser = (user: any): UserState => {
+  return {
+    totalKg: user?.totalKg || 0,
+    totalBelanja: user?.totalBelanja || 0,
+    bonus30kgUsed: user?.bonus30kgUsed || false,
+    processedIds: user?.processedIds || [],
+  };
+};
 
-  if (!db[trx.wa]) {
-    db[trx.wa] = {
-      bonusCount: 0,
-      totalKg: 0,
-      totalBelanja: 0,
+/* =========================
+   APPLY REWARD (WRITE)
+========================= */
+export const applyReward = (trx: Transaction): RewardResult => {
+  const db = getDB();
+  let user = normalizeUser(db[trx.wa]);
+
+  // 🔒 anti double
+  if (user.processedIds.includes(trx.id)) {
+    return {
+      bonusKg: 0,
+      diskonRp: 0,
+      level: getLevel(user.totalBelanja),
+      user,
     };
   }
 
-  db[trx.wa].totalKg += trx.totalKg;
-  db[trx.wa].totalBelanja += trx.total;
+  user.processedIds.push(trx.id);
 
   let bonusKg = 0;
 
-  // 🔥 BONUS RULE (30kg → 2.5kg, max 3x)
-  if (db[trx.wa].bonusCount < 3 && db[trx.wa].totalKg >= 30) {
+  if (!user.bonus30kgUsed && user.totalKg >= 30) {
     bonusKg = 2.5;
-    db[trx.wa].bonusCount += 1;
-
-    // 🔥 reset 30kg setelah dipakai
-    db[trx.wa].totalKg -= 30;
+    user.bonus30kgUsed = true;
+    user.totalKg -= 30;
   }
 
-  // 🔥 LEVEL RULE
-  const level = getLevel(db[trx.wa].totalBelanja);
-
-  // 🔥 DISKON RULE (opsional bisa kamu tambah nanti)
-  let diskonRp = 0;
-
-  // SAVE STATE
+  db[trx.wa] = user;
   saveDB(db);
 
   return {
     bonusKg,
-    diskonRp,
-    level,
-    updatedState: db[trx.wa],
+    diskonRp: 0,
+    level: getLevel(user.totalBelanja),
+    user,
   };
+};
+
+/* =========================
+   GET INFO
+========================= */
+export const getRewardInfo = (wa: string) => {
+  const transaksi = JSON.parse(localStorage.getItem("transaksi") || "[]");
+
+  const totalKg = transaksi
+    .filter((t: any) => t.wa === wa)
+    .reduce((s: number, t: any) => {
+      const berat = (t.items || [])
+        .filter((i: any) => i.tipe === "kg")
+        .reduce((a: number, i: any) => a + (i.berat || 0), 0);
+
+      return s + berat;
+    }, 0);
+
+  const totalBelanja = transaksi
+    .filter((t: any) => t.wa === wa)
+    .reduce((s: number, t: any) => s + (t.total || 0), 0);
+
+  const rewardDB = JSON.parse(localStorage.getItem("reward_db") || "{}");
+
+  return {
+    totalKg,
+    totalBelanja,
+    bonus30kgUsed: rewardDB[wa]?.bonus30kgUsed || false,
+    level: getLevel(totalBelanja),
+  };
+};
+
+  /* =========================
+     SIMULASI (FIX DI LUAR)
+  ========================= */
+  export const simulateReward = (trx: Transaction) => {
+    const transaksi = JSON.parse(localStorage.getItem("transaksi") || "[]");
+
+    // 🔥 hitung total kg dari transaksi
+    const totalKgSebelumnya = transaksi
+      .filter((t: any) => t.wa === trx.wa)
+      .reduce((s: number, t: any) => {
+        const berat = (t.items || [])
+          .filter((i: any) => i.tipe === "kg")
+          .reduce((a: number, i: any) => a + (i.berat || 0), 0);
+
+        return s + berat;
+      }, 0);
+
+    const totalKgSimulasi = totalKgSebelumnya + trx.totalKg;
+
+    let bonusKg = 0;
+
+    const rewardDB = JSON.parse(localStorage.getItem("reward_db") || "{}");
+    const user = rewardDB[trx.wa] || { bonus30kgUsed: false };
+
+    if (!user.bonus30kgUsed && totalKgSimulasi >= 30) {
+      bonusKg = 2.5;
+    }
+
+    return {
+      bonusKg,
+      akanDapatBonus: bonusKg > 0,
+      sisaMenujuBonus: Math.max(0, 30 - totalKgSimulasi),
+    };
+  
 };

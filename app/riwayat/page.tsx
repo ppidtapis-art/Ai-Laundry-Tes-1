@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 type Item = {
-  id: number;
+  id: string;
   nama: string;
   harga: number;
   tipe: "kg" | "item";
@@ -11,7 +11,7 @@ type Item = {
 };
 
 type Transaksi = {
-  id: number;
+  id: string;
   nomor: string;
   nama: string;
   wa: string;
@@ -20,9 +20,16 @@ type Transaksi = {
   status: "Proses" | "Selesai";
   tanggal: string;
   tanggalSelesai: string;
+
+  // 🔥 TAMBAHAN BIAR SINKRON
+  subtotal?: number;
+  bonusKg?: number;
+  diskonReward?: number;
 };
 
 export default function RiwayatPage() {
+  const [layanan, setLayanan] = useState<any[]>([]);
+
   const [data, setData] = useState<Transaksi[]>([]);
   const [filter, setFilter] = useState("Semua");
   const [search, setSearch] = useState("");
@@ -30,6 +37,11 @@ export default function RiwayatPage() {
 
   useEffect(() => {
     loadData();
+
+    // 🔥 TAMBAHKAN INI
+    const dataLayanan = JSON.parse(localStorage.getItem("layanan") || "[]");
+    setLayanan(dataLayanan);
+
   }, []);
 
   const loadData = () => {
@@ -43,21 +55,27 @@ export default function RiwayatPage() {
   };
 
   const formatRp = (n: number) =>
-    "Rp " + n.toLocaleString("id-ID");
+    "Rp " + (n || 0).toLocaleString("id-ID");
 
   const formatTanggal = (tgl: string) =>
     new Date(tgl).toLocaleDateString("id-ID");
 
-  const updateStatus = (id: number) => {
+  /* ===============================
+     🔥 FIX: ID STRING (BUG KRUSIAL)
+  =============================== */
+  const updateStatus = (id: string) => {
     save(data.map(x => x.id === id ? { ...x, status: "Selesai" } : x));
   };
 
-  const hapus = (id: number) => {
+  const hapus = (id: string) => {
     if (!confirm("Hapus transaksi?")) return;
     save(data.filter(x => x.id !== id));
   };
 
-  /* ===== HITUNG ULANG TOTAL ===== */
+  /* ===============================
+     🔥 HITUNG ULANG TOTAL TANPA REWARD
+     (BIAR TIDAK DISALAHGUNAKAN)
+  =============================== */
   const hitungTotal = (items: Item[]) => {
     return items.reduce((s, x) => {
       return s + (x.tipe === "kg"
@@ -69,9 +87,15 @@ export default function RiwayatPage() {
   const simpanEdit = () => {
     if (!editData) return;
 
+    const newSubtotal = hitungTotal(editData.items);
+
     const updated = data.map(x =>
       x.id === editData.id
-        ? { ...editData, total: hitungTotal(editData.items) }
+        ? {
+            ...editData,
+            subtotal: newSubtotal,
+            total: newSubtotal, // 🔥 NO REWARD RE-CALC
+          }
         : x
     );
 
@@ -96,91 +120,31 @@ export default function RiwayatPage() {
       x.nomor.toLowerCase().includes(search.toLowerCase())
     );
 
-  const cetak = () => {
-    const isi = filtered.map(x => `
-      <tr>
-        <td>${x.nomor}</td>
-        <td>${x.nama}</td>
-        <td>${x.status}</td>
-        <td>${formatTanggal(x.tanggal)}</td>
-        <td>${x.tanggalSelesai}</td>
-        <td>${formatRp(x.total)}</td>
-      </tr>
-    `).join("");
-
-    const html = `
-      <html>
-        <head>
-          <title>Cetak Laporan</title>
-          <style>
-            body { font-family: Arial; padding: 20px; }
-            h2 { margin-bottom: 10px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-            th { background: #eee; }
-          </style>
-        </head>
-        <body>
-          <h2>Laporan Transaksi</h2>
-          <div>Filter: ${filter} | Cari: ${search || "-"}</div>
-          <br/>
-          <table>
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>Nama</th>
-                <th>Status</th>
-                <th>Masuk</th>
-                <th>Selesai</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${isi}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `;
-
-    const win = window.open("", "", "width=800,height=600");
-    win?.document.write(html);
-    win?.document.close();
-    win?.print();
-  };
-
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto bg-gray-100 min-h-screen">
-      <div className="max-w-5xl mx-auto space-y-4">
 
-        {/* FILTER */}
-        <div className="bg-white p-4 rounded shadow flex gap-2 flex-wrap">
-          <input
-            className="border p-2 flex-1"
-            placeholder="Cari..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+      {/* FILTER */}
+      <div className="bg-white p-4 rounded shadow flex gap-2 flex-wrap">
+        <input
+          className="border p-2 flex-1 min-w-[150px]"
+          placeholder="Cari..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
 
-          <select
-            className="border p-2"
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-          >
-            <option>Semua</option>
-            <option>Proses</option>
-            <option>Selesai</option>
-          </select>
+        <select
+          className="border p-2"
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+        >
+          <option>Semua</option>
+          <option>Proses</option>
+          <option>Selesai</option>
+        </select>
+      </div>
 
-          <button
-            onClick={cetak}
-            className="bg-blue-600 text-white p-2 rounded"
-          >
-            Cetak
-          </button>
-        </div>
-
-        {/* LIST */}
+      {/* LIST */}
+      <div className="space-y-3 mt-3">
         {filtered.map(x => (
           <div key={x.id} className="bg-white p-4 rounded shadow">
 
@@ -203,6 +167,13 @@ export default function RiwayatPage() {
               Selesai: {x.tanggalSelesai}
             </div>
 
+            {/* 🔥 INFO REWARD */}
+            {x.bonusKg ? (
+              <div className="text-green-600 text-sm mt-1">
+                🎁 Bonus {x.bonusKg} kg
+              </div>
+            ) : null}
+
             <div className="mt-2 font-bold">
               {formatRp(x.total)}
             </div>
@@ -218,77 +189,139 @@ export default function RiwayatPage() {
             </div>
           </div>
         ))}
-
       </div>
 
-      {/* MODAL EDIT FULL */}
+      {/* ===============================
+         🔥 MODAL EDIT (FIX MOBILE!)
+      =============================== */}
       {editData && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
-          <div className="bg-white p-4 rounded w-full max-w-xl max-h-[90vh] overflow-auto">
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-end md:items-center">
 
-            <h2 className="font-bold mb-2">Edit Lengkap Transaksi</h2>
+          {/* 🔥 FULL WIDTH MOBILE */}
+          <div className="bg-white p-4 rounded-t-xl md:rounded w-full md:max-w-xl max-h-[90vh] overflow-auto">
+
+            <h2 className="font-bold mb-3 text-lg">Edit Transaksi</h2>
 
             {/* BASIC */}
-            <input className="border p-2 w-full mb-2"
+            <textarea
+              className="border p-2 w-full mb-2"
+              rows={2}
               value={editData.nama}
               onChange={e => setEditData({...editData, nama:e.target.value})}
               placeholder="Nama"
             />
 
-            <input className="border p-2 w-full mb-2"
+            <input
+              className="border p-2 w-full mb-2"
               value={editData.wa}
               onChange={e => setEditData({...editData, wa:e.target.value})}
               placeholder="WA"
             />
 
-            <input type="date" className="border p-2 w-full mb-2"
-              value={editData.tanggal.slice(0,10)}
-              onChange={e => setEditData({...editData, tanggal:e.target.value})}
+            {/* 🔥 TANGGAL */}
+            <input
+              type="date"
+              className="border p-2 w-full mb-2"
+              value={editData.tanggal?.slice(0,10)}
+              onChange={e =>
+                setEditData({
+                  ...editData,
+                  tanggal: new Date(e.target.value).toISOString(),
+                })
+              }
             />
 
-            <input type="date" className="border p-2 w-full mb-2"
-              value={editData.tanggalSelesai}
-              onChange={e => setEditData({...editData, tanggalSelesai:e.target.value})}
+            <input
+              type="date"
+              className="border p-2 w-full mb-2"
+              value={editData.tanggalSelesai?.slice(0,10)}
+              onChange={e =>
+                setEditData({
+                  ...editData,
+                  tanggalSelesai: new Date(e.target.value).toISOString(),
+                })
+              }
             />
 
             {/* ITEMS */}
-            <div className="mt-3">
-              <div className="font-semibold mb-1">Layanan</div>
-
+            <div className="mt-3 space-y-2">
               {editData.items.map((it, i) => (
-                <div key={i} className="border p-2 mb-2 rounded">
+                <div key={i} className="border p-3 rounded">
 
                   <div className="font-medium">{it.nama}</div>
 
                   {it.tipe === "kg" ? (
                     <input
                       type="number"
-                      className="border p-1 w-full mt-1"
+                      className="border p-2 w-full mt-2"
                       value={it.berat}
                       onChange={e => updateItem(i, "berat", Number(e.target.value))}
-                      placeholder="Berat (Kg)"
                     />
                   ) : (
                     <input
                       type="number"
-                      className="border p-1 w-full mt-1"
+                      className="border p-2 w-full mt-2"
                       value={it.qty}
                       onChange={e => updateItem(i, "qty", Number(e.target.value))}
-                      placeholder="Jumlah"
                     />
                   )}
 
                   <div className="text-sm mt-1">
-                    Harga: {formatRp(it.harga)}
+                    {formatRp(it.harga)}
                   </div>
+
+                  {/* 🔥 HAPUS ITEM */}
+                  <button
+                    onClick={() => {
+                      const newItems = editData.items.filter((_, idx) => idx !== i);
+                      setEditData({ ...editData, items: newItems });
+                    }}
+                    className="bg-red-500 text-white px-2 py-1 mt-2 rounded"
+                  >
+                    Hapus
+                  </button>
+
                 </div>
               ))}
             </div>
 
+            <select
+            className="border p-2 w-full mt-3"
+            onChange={(e) => {
+              const l = layanan.find(x => x.id == e.target.value);
+              if (!l || !editData) return;
+
+              setEditData({
+                ...editData,
+                items: [
+                  ...editData.items,
+                  {
+                    ...l,
+                    qty: 1,
+                    berat: l.tipe === "kg" ? 1 : undefined
+                  }
+                ]
+              });
+
+              e.target.value = ""; // reset dropdown
+            }}
+          >
+            <option value="">+ Tambah Layanan</option>
+            {layanan.map(l => (
+              <option key={l.id} value={l.id}>
+                {l.nama} - {formatRp(l.harga)}
+              </option>
+            ))}
+          </select>
+
             {/* ACTION */}
-            <div className="flex gap-2 mt-3">
-              <button onClick={simpanEdit} className="bg-green-600 text-white p-2 flex-1 rounded">Simpan</button>
-              <button onClick={()=>setEditData(null)} className="bg-gray-400 text-white p-2 flex-1 rounded">Batal</button>
+            <div className="flex gap-2 mt-4">
+              <button onClick={simpanEdit} className="bg-green-600 text-white p-3 flex-1 rounded">
+                Simpan
+              </button>
+              <button onClick={()=>setEditData(null)} className="bg-gray-400 text-white p-3 flex-1 rounded">
+                Batal
+              </button>
             </div>
 
           </div>

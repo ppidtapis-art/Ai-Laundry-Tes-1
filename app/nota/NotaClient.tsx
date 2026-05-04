@@ -174,22 +174,51 @@ const nilaiBonus = reward.bonusKg * hargaPerKg;
   };
 
   const kirimWA = async () => {
-    if (!data) return;
+    if (!data || !notaRef.current) return;
 
-    await handleDownload();
+    try {
+      const canvas = await html2canvas(notaRef.current, {
+        backgroundColor: "#fff",
+        scale: 2,
+        useCORS: true,
+      });
 
-    const nomor = data.wa.replace(/^0/, "62");
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/png")
+      );
 
-    const pesan = `🧾 Nota Laundry
-No: ${data.nomor}
-Nama: ${data.nama}
-Total: ${formatRp(data.total)}
+      if (!blob) throw new Error("Gagal buat gambar");
 
-Terima kasih 🙏`;
+      const file = new File([blob], `nota-${data.nomor}.png`, {
+        type: "image/png",
+      });
 
-    const url = `intent://send?phone=${nomor}&text=${encodeURIComponent(pesan)}#Intent;scheme=whatsapp;package=com.whatsapp;end`;
+      const pesan = `🧾 Nota Laundry
+        No: ${data.nomor}
+        Nama: ${data.nama}
+        Total: ${formatRp(data.total)}
 
-    window.location.href = url;
+      Terima kasih 🙏`;
+
+      // 🔥 INI KUNCINYA
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text: pesan,
+          title: "Nota Laundry",
+        });
+      } else {
+        // fallback
+        window.open(
+          `https://wa.me/${data.wa.replace(/^0/, "62")}?text=${encodeURIComponent(pesan)}`,
+          "_blank"
+        );
+      }
+
+    } catch (err) {
+      alert("Gagal kirim, coba lagi");
+      console.error(err);
+    }
   };
 
   /* ===================== LOADING ===================== */
