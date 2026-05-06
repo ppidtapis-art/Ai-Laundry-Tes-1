@@ -222,7 +222,9 @@ export default function TransaksiPage() {
       const norm = normalizeWA(wa);
 
       const s = simulateReward({
+        id: "simulasi",
         wa: norm,
+        total: subtotal,
         totalKg,
       });
 
