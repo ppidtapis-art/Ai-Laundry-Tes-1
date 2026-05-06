@@ -55,19 +55,10 @@ export default function TransaksiPage() {
   useEffect(() => {
     setLayanan(JSON.parse(localStorage.getItem("layanan") || "[]"));
 
-    const trx = JSON.parse(localStorage.getItem("transaksi") || "[]");
+    // 🔥 AMBIL DARI DATABASE PELANGGAN (BUKAN TRANSAKSI)
+    const pelangganDB = JSON.parse(localStorage.getItem("pelanggan") || "[]");
 
-    const unik = Array.from(
-      new Map(trx.map((t: any) => [t.wa, t])).values()
-    );
-
-    setPelangganList(
-      unik.map((t: any) => ({
-        id: t.id,
-        nama: t.nama,
-        wa: t.wa,
-      }))
-    );
+    setPelangganList(pelangganDB);
   }, []);
 
   /* ===============================
@@ -80,12 +71,18 @@ export default function TransaksiPage() {
     return clean;
   };
 
-  const pilihPelanggan = (id: string) => {
-    const p = pelangganList.find((x) => x.id === id);
+  const pilihPelanggan = (wa: string) => {
+    const p = pelangganList.find((x) => x.wa === wa);
     if (!p) return;
 
     setNama(p.nama);
     setWa(p.wa);
+
+    // 🔥 trigger reload reward info
+    setTimeout(() => {
+      const r = getRewardInfo(normalizeWA(p.wa));
+      setRewardInfo(r);
+    }, 0);
   };
 
   /* ===============================
@@ -219,6 +216,19 @@ export default function TransaksiPage() {
     sisaMenujuBonus: 30,
   });
 
+  useEffect(() => {
+      if (!wa) return;
+
+      const norm = normalizeWA(wa);
+
+      const s = simulateReward({
+        wa: norm,
+        totalKg,
+      });
+
+      setSimulasi(s);
+    }, [wa, totalKg]);
+
   const formatRp = (n: number) => "Rp " + n.toLocaleString("id-ID");
 
   return (
@@ -233,7 +243,7 @@ export default function TransaksiPage() {
         >
           <option value="">Pilih Pelanggan</option>
           {pelangganList.map((p) => (
-            <option key={p.id} value={p.id}>
+            <option key={p.wa} value={p.wa}>
               {p.nama} - {p.wa}
             </option>
           ))}

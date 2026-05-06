@@ -34,6 +34,7 @@ export default function RiwayatPage() {
   const [filter, setFilter] = useState("Semua");
   const [search, setSearch] = useState("");
   const [editData, setEditData] = useState<Transaksi | null>(null);
+  const [hapusId, setHapusId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -68,8 +69,13 @@ export default function RiwayatPage() {
   };
 
   const hapus = (id: string) => {
-    if (!confirm("Hapus transaksi?")) return;
-    save(data.filter(x => x.id !== id));
+    setHapusId(id);
+  };
+
+  const konfirmasiHapus = () => {
+    if (!hapusId) return;
+    save(data.filter(x => x.id !== hapusId));
+    setHapusId(null);
   };
 
   /* ===============================
@@ -327,6 +333,34 @@ export default function RiwayatPage() {
           </div>
         </div>
       )}
+
+      {hapusId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-[90%] max-w-sm text-center">
+
+            <h3 className="font-bold text-lg">Hapus Transaksi?</h3>
+            <p className="text-sm mt-2">Data tidak bisa dikembalikan</p>
+
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={konfirmasiHapus}
+                className="bg-red-600 text-white p-2 flex-1 rounded"
+              >
+                Ya, Hapus
+              </button>
+
+              <button
+                onClick={() => setHapusId(null)}
+                className="bg-gray-400 text-white p-2 flex-1 rounded"
+              >
+                Batal
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
