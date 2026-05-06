@@ -201,7 +201,7 @@ export default function RiwayatPage() {
          🔥 MODAL EDIT (FIX MOBILE!)
       =============================== */}
       {editData && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-end md:items-center">
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-[9999]">
 
           {/* 🔥 FULL WIDTH MOBILE */}
           <div className="bg-white p-4 rounded-t-xl md:rounded w-full md:max-w-xl max-h-[90vh] overflow-auto">

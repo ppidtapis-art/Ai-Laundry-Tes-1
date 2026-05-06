@@ -43,8 +43,12 @@ export default function RootLayout({
               background: "#2c3e50",
               color: "white",
               padding: 20,
-              height: "100vh",
+              minHeight: "100vh",
+
+              // 🔥 INI KUNCI: sembunyikan di HP
+              display: "none",
             }}
+            className="md:block"
           >
             <h2 style={{ marginBottom: 20 }}>Laundry POS</h2>
 
@@ -61,7 +65,7 @@ export default function RootLayout({
             style={{
               flex: 1,
               background: "#ecf0f1",
-              padding: 20,
+              padding: 16,
             }}
           >
             {children}
