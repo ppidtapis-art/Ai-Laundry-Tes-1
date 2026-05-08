@@ -38,7 +38,7 @@ export default function RootLayout({
 
           {/* ===== SIDEBAR ===== */}
           <div
-            className="hidden md:block"
+            className="sidebar"
             style={{
               width: 220,
               background: "#2c3e50",
