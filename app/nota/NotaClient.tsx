@@ -51,8 +51,16 @@ export default function NotaClient() {
 
   const formatTanggal = (tgl: string) => {
     if (!tgl) return "-";
+
     const d = new Date(tgl);
-    return isNaN(d.getTime()) ? tgl : d.toLocaleDateString("id-ID");
+
+    if (isNaN(d.getTime())) return tgl;
+
+    return d.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   };
 
   /* ===================== ITEMS ===================== */

@@ -38,20 +38,17 @@ export default function RootLayout({
 
           {/* ===== SIDEBAR ===== */}
           <div
+            className="hidden md:block"
             style={{
               width: 220,
               background: "#2c3e50",
               color: "white",
               padding: 20,
               minHeight: "100vh",
-
-              // 🔥 INI KUNCI: sembunyikan di HP
-              display: "none",
             }}
-            className="md:block"
           >
             <h2 style={{ marginBottom: 20 }}>Laundry POS</h2>
-
+          
             <Menu href="/" label="Dashboard" />
             <Menu href="/transaksi" label="Transaksi" />
             <Menu href="/riwayat" label="Riwayat" />

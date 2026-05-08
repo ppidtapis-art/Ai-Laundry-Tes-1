@@ -190,18 +190,43 @@ export default function TransaksiPage() {
 
     const totalAkhir = subtotalFinal - potongan;
 
+    // ==============================
+    // HITUNG TANGGAL SELESAI
+    // ==============================
+
+    // ambil estimasi paling lama
+    const maxHari = Math.max(
+      ...selected.map((x) => x.estimasiHari || 0)
+    );
+
+    const tanggalMasuk = new Date();
+
+    const tanggalSelesai = new Date();
+    tanggalSelesai.setDate(
+      tanggalMasuk.getDate() + maxHari
+    );
+
     const trx = {
       id: trxId,
       nomor: "TRX-" + trxId,
       nama,
       wa: norm,
       items: selected,
+
       subtotal: subtotalFinal,
       bonusKg: reward.bonusKg,
+
       level: member.level,
       total: totalAkhir,
+
       status: "Proses",
-      tanggal: new Date().toISOString(),
+
+      tanggal: tanggalMasuk.toISOString(),
+
+      // 🔥 TAMBAHAN
+      tanggalSelesai: tanggalSelesai.toISOString(),
+
+      estimasiHari: maxHari,
     };
 
     const lama = JSON.parse(localStorage.getItem("transaksi") || "[]");
