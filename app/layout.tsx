@@ -1,6 +1,9 @@
+"use client";
+
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
+import { useState } from "react";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,21 +16,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Laundry POS",
-  description: "Aplikasi Kasir Laundry",
-};
-
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-};
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <html
       lang="en"
@@ -36,19 +31,22 @@ export default function RootLayout({
       <body style={{ margin: 0 }}>
         <div style={{ display: "flex", minHeight: "100vh" }}>
 
+          {/* ===== MOBILE TOPBAR ===== */}
+          <div className="mobileTopbar">
+            <button
+              onClick={() => setOpen(!open)}
+              className="menuButton"
+            >
+              ☰
+            </button>
+
+            <span>Ai Laundry</span>
+          </div>
+
           {/* ===== SIDEBAR ===== */}
-          <div
-            className="sidebar"
-            style={{
-              width: 220,
-              background: "#2c3e50",
-              color: "white",
-              padding: 20,
-              minHeight: "100vh",
-            }}
-          >
-            <h2 style={{ marginBottom: 20 }}>Laundry POS</h2>
-          
+          <div className={`sidebar ${open ? "showSidebar" : ""}`}>
+            <h2 style={{ marginBottom: 20 }}>Ai Laundry</h2>
+
             <Menu href="/" label="Dashboard" />
             <Menu href="/transaksi" label="Transaksi" />
             <Menu href="/riwayat" label="Riwayat" />
@@ -58,13 +56,7 @@ export default function RootLayout({
           </div>
 
           {/* ===== CONTENT ===== */}
-          <div
-            style={{
-              flex: 1,
-              background: "#ecf0f1",
-              padding: 16,
-            }}
-          >
+          <div className="content">
             {children}
           </div>
         </div>
@@ -73,20 +65,11 @@ export default function RootLayout({
   );
 }
 
-/* ===== MENU COMPONENT ===== */
+/* ===== MENU ===== */
 function Menu({ href, label }: any) {
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
-      <div
-        style={{
-          padding: "10px",
-          marginBottom: 10,
-          borderRadius: 6,
-          background: "#34495e",
-          cursor: "pointer",
-          color: "white",
-        }}
-      >
+      <div className="menuItem">
         {label}
       </div>
     </Link>

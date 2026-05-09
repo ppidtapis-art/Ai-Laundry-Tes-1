@@ -51,3 +51,84 @@ body {
     display: none;
   }
 }
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: 220px;
+  background: #2c3e50;
+  color: white;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* ===== CONTENT ===== */
+.content {
+  flex: 1;
+  background: #ecf0f1;
+  padding: 16px;
+}
+
+/* ===== MENU ===== */
+.menuItem {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: #34495e;
+  cursor: pointer;
+  color: white;
+}
+
+/* ===== MOBILE TOPBAR ===== */
+.mobileTopbar {
+  display: none;
+}
+
+.menuButton {
+  background: #2c3e50;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 20px;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+
+  .mobileTopbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: white;
+    padding: 0 16px;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+
+  .sidebar {
+    position: fixed;
+    left: -260px;
+    top: 0;
+    z-index: 999;
+    transition: 0.3s;
+  }
+
+  .showSidebar {
+    left: 0;
+  }
+
+  .content {
+    width: 100%;
+    padding-top: 80px;
+  }
+}
