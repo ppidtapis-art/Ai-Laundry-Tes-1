@@ -9,6 +9,7 @@ type Nota = {
   nomor: string;
   nama: string;
   wa: string;
+  subtotalAsli?: number;
   tanggal: string;
   tanggalSelesai: string;
   total: number;
@@ -355,7 +356,7 @@ const nilaiBonus = reward.bonusKg * hargaPerKg;
         <div className="line" />
 
         {/* RINGKASAN */}
-        {data.subtotalAsli && data.bonusKg > 0 && (
+        {data.subtotalAsli && (data.bonusKg || 0) > 0 && (
           <div className="row">
             <span>Subtotal Awal</span>
             <span>{formatRp(data.subtotalAsli)}</span>
