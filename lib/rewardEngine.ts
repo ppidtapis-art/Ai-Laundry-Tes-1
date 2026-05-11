@@ -8,7 +8,10 @@ type Transaction = {
 type UserState = {
   totalKg: number;
   totalBelanja: number;
-  bonus30kgUsed: boolean;
+
+  // jumlah bonus yg SUDAH dipakai
+  bonusUsed: boolean;
+
   processedIds: string[];
 };
 
@@ -52,8 +55,14 @@ const getLevel = (total: number): "Silver" | "Gold" | "Platinum" => {
 const normalizeUser = (user: any): UserState => {
   return {
     totalKg: user?.totalKg || 0,
+
     totalBelanja: user?.totalBelanja || 0,
-    bonus30kgUsed: user?.bonus30kgUsed || false,
+
+    bonusUsed:
+      user?.bonusUsed ||
+      user?.bonus30kgUsed ||
+      false,
+
     processedIds: user?.processedIds || [],
   };
 };
@@ -62,10 +71,12 @@ const normalizeUser = (user: any): UserState => {
    APPLY REWARD (WRITE)
 ========================= */
 export const applyReward = (trx: Transaction): RewardResult => {
+
   const db = getDB();
+
   let user = normalizeUser(db[trx.wa]);
 
-  // 🔒 anti double
+  // 🔒 anti double transaksi
   if (user.processedIds.includes(trx.id)) {
     return {
       bonusKg: 0,
@@ -75,17 +86,37 @@ export const applyReward = (trx: Transaction): RewardResult => {
     };
   }
 
+  // =========================
+  // SIMPAN ID
+  // =========================
   user.processedIds.push(trx.id);
 
+  // =========================
+  // TAMBAH TOTAL DULU
+  // =========================
+  user.totalKg += trx.totalKg;
+  user.totalBelanja += trx.total;
+
+  // =========================
+  // BONUS NEW MEMBER
+  // =========================
   let bonusKg = 0;
 
-  if (!user.bonus30kgUsed && user.totalKg >= 30) {
+  // hanya 1x seumur hidup
+  if (
+    !user.bonusUsed &&
+    user.totalKg >= 30
+  ) {
     bonusKg = 2.5;
-    user.bonus30kgUsed = true;
-    user.totalKg -= 30;
+
+    user.bonusUsed = true;
   }
 
+  // =========================
+  // SAVE
+  // =========================
   db[trx.wa] = user;
+
   saveDB(db);
 
   return {
@@ -116,12 +147,24 @@ export const getRewardInfo = (wa: string) => {
     .filter((t: any) => t.wa === wa)
     .reduce((s: number, t: any) => s + (t.total || 0), 0);
 
-  const rewardDB = JSON.parse(localStorage.getItem("reward_db") || "{}");
+  const rewardDB = JSON.parse(
+    localStorage.getItem("reward_db") || "{}"
+  );
+
+  const bonusUsed =
+    rewardDB[wa]?.bonusUsed ||
+    rewardDB[wa]?.bonus30kgUsed ||
+    false;
 
   return {
     totalKg,
     totalBelanja,
-    bonus30kgUsed: rewardDB[wa]?.bonus30kgUsed || false,
+
+    bonusUsed,
+
+    siapBonus:
+      !bonusUsed && totalKg >= 30,
+
     level: getLevel(totalBelanja),
   };
 };
@@ -147,10 +190,18 @@ export const getRewardInfo = (wa: string) => {
 
     let bonusKg = 0;
 
-    const rewardDB = JSON.parse(localStorage.getItem("reward_db") || "{}");
-    const user = rewardDB[trx.wa] || { bonus30kgUsed: false };
+    const rewardDB = JSON.parse(
+      localStorage.getItem("reward_db") || "{}"
+    );
 
-    if (!user.bonus30kgUsed && totalKgSimulasi >= 30) {
+    const user = rewardDB[trx.wa] || {
+      bonusUsed: false
+    };
+
+    if (
+      !user.bonusUsed &&
+      totalKgSimulasi >= 30
+    ) {
       bonusKg = 2.5;
     }
 

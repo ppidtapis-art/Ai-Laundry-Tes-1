@@ -48,7 +48,8 @@ export default function TransaksiPage() {
   // 🔥 hanya untuk info, bukan untuk hitung transaksi
   const [rewardInfo, setRewardInfo] = useState({
     totalKg: 0,
-    bonus30kgUsed: false,
+    bonusUsed: false,
+    siapBonus: false,
     level: "Silver" as "Silver" | "Gold" | "Platinum",
   });
 
@@ -213,7 +214,12 @@ export default function TransaksiPage() {
       wa: norm,
       items: selected,
 
+      // 🔥 subtotal asli sebelum bonus
+      subtotalAsli: subtotal,
+
+      // 🔥 subtotal setelah bonus
       subtotal: subtotalFinal,
+
       bonusKg: reward.bonusKg,
 
       level: member.level,
@@ -319,6 +325,11 @@ export default function TransaksiPage() {
         {/* INFO BONUS */}
         <div style={{ fontSize: 12, marginTop: 5 }}>
           Total Kg Customer: {rewardInfo.totalKg.toFixed(1)} kg
+          {rewardInfo.bonusUsed && (
+            <div style={{ color: "orange", marginTop: 5 }}>
+              ✅ Bonus member sudah digunakan
+            </div>
+          )}
         </div>
 
         {/* BONUS SIAP */}
@@ -342,7 +353,7 @@ export default function TransaksiPage() {
         </div>
       )}
 
-        {!rewardInfo.bonus30kgUsed && rewardInfo.totalKg >= 30 && (
+        {rewardInfo.siapBonus && (
           <div style={{ color: "green" }}>
             🎁 Bonus siap dipakai
           </div>

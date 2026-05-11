@@ -109,6 +109,26 @@ export default function NotaClient() {
 
 const nilaiBonus = reward.bonusKg * hargaPerKg;
 
+  const sisaBonus = { value: reward.bonusKg };
+
+  const renderQtyKg = (qty: number) => {
+    if (sisaBonus.value <= 0) {
+      return {
+        bayarKg: qty,
+        bonusDipakai: 0,
+      };
+    }
+
+    const bonusDipakai = Math.min(qty, sisaBonus.value);
+
+    sisaBonus.value -= bonusDipakai;
+
+    return {
+      bayarKg: qty - bonusDipakai,
+      bonusDipakai,
+    };
+  };
+
   /* ===================== LEVEL (fallback data lama) ===================== */
   const getLevel = (total: number) => {
     if (total >= 2000000) return "Platinum";
@@ -257,37 +277,95 @@ const nilaiBonus = reward.bonusKg * hargaPerKg;
         <div className="line" />
 
         {/* ITEMS */}
-        {items.map((l, i) => (
-          <div key={i}>
-            <div>{l.nama}</div>
-            <div className="row">
-              <span>
-                {l.tipe === "kg"
-                  ? `${l.qty} Kg x ${l.harga}`
-                  : `${l.qty} x ${l.harga}`}
-              </span>
-              <span>{formatRp(l.total)}</span>
+        {items.map((l, i) => {
+
+          const kgData =
+            l.tipe === "kg"
+              ? renderQtyKg(l.qty)
+              : null;
+
+          return (
+            <div key={i}>
+
+              <div>{l.nama}</div>
+
+              {l.tipe === "kg" ? (
+                <>
+                  <div className="row">
+                    <span>
+                      {l.qty} Kg x {l.harga}
+                    </span>
+
+                    <span>
+                      {formatRp(l.qty * l.harga)}
+                    </span>
+                  </div>
+
+                  {kgData && kgData.bonusDipakai > 0 && (
+                    <div
+                      className="row green"
+                      style={{ fontSize: 12 }}
+                    >
+                      <span>
+                        Bonus New Member
+                      </span>
+
+                      <span>
+                        -{kgData.bonusDipakai} Kg
+                      </span>
+                    </div>
+                  )}
+
+                  {kgData && (
+                    <div
+                      className="row"
+                      style={{
+                        fontWeight: "bold",
+                        fontSize: 12,
+                      }}
+                    >
+                      <span>
+                        Bayar {kgData.bayarKg.toFixed(1)} Kg
+                      </span>
+
+                      <span>
+                        {formatRp(
+                          kgData.bayarKg * l.harga
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="row">
+                  <span>
+                    {l.qty} x {l.harga}
+                  </span>
+
+                  <span>
+                    {formatRp(l.total)}
+                  </span>
+                </div>
+              )}
+
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         <div className="line" />
 
         {/* RINGKASAN */}
-        <div className="row">
-          <span>Subtotal</span>
-          <span>{formatRp(subtotal)}</span>
-        </div>
-
-        {/* BONUS KG */}
-        {reward.bonusKg > 0 && (
-          <div className="row green">
-            <span>Bonus Laundry</span>
-            <span>
-              -{reward.bonusKg} Kg x {Math.round(hargaPerKg)} = {formatRp(nilaiBonus)}
-            </span>
+        {data.subtotalAsli && data.bonusKg > 0 && (
+          <div className="row">
+            <span>Subtotal Awal</span>
+            <span>{formatRp(data.subtotalAsli)}</span>
           </div>
         )}
+
+        <div className="row">
+          <span>Subtotal Bayar</span>
+          <span>{formatRp(subtotal)}</span>
+        </div>
 
         {/* DISKON REWARD */}
         {reward.diskonRp > 0 && (

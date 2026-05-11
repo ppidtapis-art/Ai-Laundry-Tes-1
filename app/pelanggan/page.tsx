@@ -35,6 +35,7 @@ type Pelanggan = {
   total: number;
 
   totalBerat: number;
+
   bonusUsed: boolean;
   siapBonus: boolean;
 };
@@ -45,21 +46,38 @@ export default function PelangganPage() {
   const [riwayat, setRiwayat] = useState<Trx[]>([]);
 
   useEffect(() => {
+
+    const rewardDB =
+      JSON.parse(localStorage.getItem("reward_db") || "{}");
+
+    rewardDB["6285245461684"] = {
+      ...rewardDB["6285245461684"],
+      bonusUsed: true,
+    };
+
+    localStorage.setItem(
+      "reward_db",
+      JSON.stringify(rewardDB)
+    );
+
     const trx: Trx[] = JSON.parse(localStorage.getItem("transaksi") || "[]");
-    const rewardDB = JSON.parse(localStorage.getItem("reward_db") || "{}");
 
     const map: { [key: string]: Pelanggan } = {};
 
     trx.forEach((t) => {
       if (!map[t.wa]) {
         map[t.wa] = {
-          nama: t.nama,
-          wa: t.wa,
-          total: 0,
-          totalBerat: 0,
-          bonusUsed: rewardDB[t.wa]?.bonus30kgUsed || false,
-          siapBonus: false,
-        };
+        nama: t.nama,
+        wa: t.wa,
+
+        total: 0,
+        totalBerat: 0,
+
+        bonusUsed:
+          rewardDB[t.wa]?.bonusUsed || false,
+
+        siapBonus: false,
+      };
       }
 
       // 🔥 TOTAL BELANJA DARI TRANSAKSI
@@ -75,7 +93,11 @@ export default function PelangganPage() {
 
     // 🔥 STATUS BONUS
     Object.values(map).forEach((p) => {
-      p.siapBonus = !p.bonusUsed && p.totalBerat >= 30;
+
+      p.siapBonus =
+        !p.bonusUsed &&
+        p.totalBerat >= 30;
+
     });
 
     const result = Object.values(map).sort((a, b) => b.total - a.total);
@@ -184,14 +206,28 @@ export default function PelangganPage() {
               Berat: {p.totalBerat.toFixed(1)} kg
             </div>
 
-            <div style={{ fontSize: 12 }}>
-              Status Bonus: {p.bonusUsed ? "Sudah dipakai" : "Belum"}
-            </div>
+            <div style={{ fontSize: 12, marginTop: 5 }}>
 
-            <div style={{ fontSize: 12, color: p.siapBonus ? "green" : "gray" }}>
-              {p.siapBonus
-                ? "🎁 Bonus 2.5kg siap dipakai"
-                : "Belum mencapai bonus"}
+              {p.bonusUsed ? (
+
+                <span style={{ color: "green" }}>
+                  Status Bonus: Sudah dipakai
+                </span>
+
+              ) : p.siapBonus ? (
+
+                <span style={{ color: "orange" }}>
+                  🎁 Bonus 2.5kg siap dipakai
+                </span>
+
+              ) : (
+
+                <span style={{ color: "#666" }}>
+                  Belum mencapai bonus
+                </span>
+
+              )}
+
             </div>
 
             {/* LEVEL */}
